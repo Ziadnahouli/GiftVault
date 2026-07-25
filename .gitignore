@@ -1,0 +1,10 @@
+node_modules/
+dist/
+.next/
+.env
+*.db
+data/
+uploads/
+.DS_Store
+Thumbs.db
+*.log
