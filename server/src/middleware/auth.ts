@@ -84,6 +84,6 @@ export function generateToken(user: { id: number; email: string; role: string; n
   return jwt.sign(
     { id: user.id, email: user.email, role: user.role, name: user.name },
     config.jwt.secret,
-    { expiresIn: config.jwt.expiresIn as string }
+    { expiresIn: config.jwt.expiresIn as any }
   );
 }
