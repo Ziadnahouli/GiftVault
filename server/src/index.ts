@@ -29,6 +29,9 @@ const app = express();
 
 // ==================== SECURITY ====================
 
+// Trust Railway's reverse proxy (required for rate limiting behind a proxy)
+app.set('trust proxy', 1);
+
 // Helmet for security headers
 app.use(helmet({
   crossOriginResourcePolicy: { policy: 'cross-origin' },
