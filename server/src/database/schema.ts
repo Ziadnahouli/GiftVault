@@ -1,4 +1,4 @@
-import Database from 'better-sqlite3';
+import Database, { Database as BetterSqlite3Database } from 'better-sqlite3';
 import path from 'path';
 import fs from 'fs';
 import { config } from '../config';
@@ -8,7 +8,7 @@ if (!fs.existsSync(dbDir)) {
   fs.mkdirSync(dbDir, { recursive: true });
 }
 
-const db = new Database(path.resolve(config.db.path));
+const db: BetterSqlite3Database = new Database(path.resolve(config.db.path));
 
 // Enable WAL mode for better performance
 db.pragma('journal_mode = WAL');
