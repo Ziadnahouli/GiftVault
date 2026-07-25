@@ -68,7 +68,7 @@ export default function Home() {
               <Link href="/shop" className="btn-primary w-full sm:w-auto text-lg px-8">
                 {t('home.shop_now')}
               </Link>
-              <Link href="/categories" className="btn-secondary w-full sm:w-auto text-lg px-8">
+              <Link href="/shop" className="btn-secondary w-full sm:w-auto text-lg px-8">
                 Explore Categories
               </Link>
             </div>
