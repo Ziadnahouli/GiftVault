@@ -29,7 +29,7 @@ export async function fetchExchangeRates(): Promise<Record<string, number>> {
 
   try {
     const response = await fetch(config.exchangeRateApiUrl);
-    const data = await response.json();
+    const data = await response.json() as any;
 
     if (data && data.rates) {
       ratesCache = data.rates;
