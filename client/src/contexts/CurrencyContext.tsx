@@ -1,6 +1,7 @@
 "use client";
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { fetchApi } from '../lib/api';
 
 type Currency = 'USD' | 'EUR' | 'GBP' | 'SAR' | 'AED' | 'LBP' | 'TRY';
 
@@ -42,8 +43,7 @@ export function CurrencyProvider({ children }: { children: React.ReactNode }) {
     }
     
     // Fetch live rates from our backend
-    fetch('http://localhost:5000/api/settings/currencies')
-      .then(res => res.json())
+    fetchApi('/settings/currencies')
       .then(data => {
         if (data.currencies) {
           setCurrencies(data.currencies);
