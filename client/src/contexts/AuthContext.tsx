@@ -6,7 +6,7 @@ interface User {
   id: number;
   name: string;
   email: string;
-  role: 'customer' | 'admin';
+  role: 'customer' | 'admin' | 'super_admin';
 }
 
 interface AuthContextType {
@@ -16,6 +16,7 @@ interface AuthContextType {
   logout: () => void;
   isAuthenticated: boolean;
   isAdmin: boolean;
+  isSuperAdmin: boolean;
   isLoading: boolean;
 }
 
@@ -59,6 +60,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     localStorage.removeItem('user');
   };
 
+  const role = user?.role;
+
   return (
     <AuthContext.Provider
       value={{
@@ -67,7 +70,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         login,
         logout,
         isAuthenticated: !!token && !!user,
-        isAdmin: user?.role === 'admin',
+        isAdmin: role === 'admin' || role === 'super_admin',
+        isSuperAdmin: role === 'super_admin',
         isLoading,
       }}
     >

@@ -538,10 +538,59 @@ router.put('/users/:id', (req: AuthRequest, res: Response) => {
     const id = parseInt(req.params.id);
     const { role, is_active } = req.body;
 
+    const target = db.prepare('SELECT id, role FROM users WHERE id = ?').get(id) as
+      | { id: number; role: string }
+      | undefined;
+
+    if (!target) {
+      res.status(404).json({ error: 'User not found' });
+      return;
+    }
+
+    const actorIsSuperAdmin = req.user?.role === 'super_admin';
+
+    // Only Super Admins can assign/remove super_admin, or modify Super Admin accounts
+    if (target.role === 'super_admin' && !actorIsSuperAdmin) {
+      res.status(403).json({ error: 'Only Super Admins can modify Super Admin accounts.' });
+      return;
+    }
+
     if (role !== undefined) {
+      const allowedRoles = actorIsSuperAdmin
+        ? ['customer', 'admin', 'super_admin']
+        : ['customer', 'admin'];
+
+      if (!allowedRoles.includes(role)) {
+        res.status(403).json({ error: 'You do not have permission to assign this role.' });
+        return;
+      }
+
+      // Prevent removing the last Super Admin
+      if (target.role === 'super_admin' && role !== 'super_admin') {
+        const count = (
+          db.prepare(`SELECT COUNT(*) as c FROM users WHERE role = 'super_admin'`).get() as { c: number }
+        ).c;
+        if (count <= 1) {
+          res.status(400).json({ error: 'Cannot demote the last Super Admin.' });
+          return;
+        }
+      }
+
       db.prepare('UPDATE users SET role = ? WHERE id = ?').run(role, id);
     }
+
     if (is_active !== undefined) {
+      if (target.role === 'super_admin' && !is_active) {
+        const count = (
+          db.prepare(`SELECT COUNT(*) as c FROM users WHERE role = 'super_admin' AND is_active = 1`).get() as {
+            c: number;
+          }
+        ).c;
+        if (count <= 1) {
+          res.status(400).json({ error: 'Cannot deactivate the last active Super Admin.' });
+          return;
+        }
+      }
       db.prepare('UPDATE users SET is_active = ? WHERE id = ?').run(is_active ? 1 : 0, id);
     }
 

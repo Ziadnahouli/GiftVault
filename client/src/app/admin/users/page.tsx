@@ -4,10 +4,12 @@ import React, { useEffect, useState } from 'react';
 import { fetchApi } from '@/lib/api';
 import { Badge } from '@/components/ui/Badge';
 import { Skeleton } from '@/components/ui/Skeleton';
-import { Search, Shield, ShieldAlert, User, CheckCircle, XCircle } from 'lucide-react';
+import { Search, ShieldAlert, User, Crown } from 'lucide-react';
 import { toast } from 'react-hot-toast';
+import { useAuth } from '@/contexts/AuthContext';
 
 export default function AdminUsersPage() {
+  const { user: currentUser, isSuperAdmin } = useAuth();
   const [users, setUsers] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -31,7 +33,12 @@ export default function AdminUsersPage() {
   }, [searchTerm]);
 
   const handleUpdateRole = async (id: number, currentRole: string) => {
-    const newRole = currentRole === 'admin' ? 'customer' : 'admin';
+    if (currentRole === 'super_admin' && !isSuperAdmin) {
+      toast.error('Only Super Admins can modify Super Admin accounts');
+      return;
+    }
+
+    const newRole = currentRole === 'admin' || currentRole === 'super_admin' ? 'customer' : 'admin';
     if (newRole === 'admin' && !window.confirm('Are you sure you want to grant this user ADMIN privileges?')) return;
     if (newRole === 'customer' && !window.confirm('Are you sure you want to revoke this user\'s ADMIN privileges?')) return;
 
@@ -42,8 +49,8 @@ export default function AdminUsersPage() {
       });
       toast.success('User role updated');
       setUsers(users.map(u => u.id === id ? { ...u, role: newRole } : u));
-    } catch (error) {
-      toast.error('Failed to update role');
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to update role');
     }
   };
 
@@ -55,8 +62,8 @@ export default function AdminUsersPage() {
       });
       toast.success(currentStatus ? 'User disabled' : 'User enabled');
       setUsers(users.map(u => u.id === id ? { ...u, is_active: currentStatus ? 0 : 1 } : u));
-    } catch (error) {
-      toast.error('Failed to update user status');
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to update user status');
     }
   };
 
@@ -129,7 +136,11 @@ export default function AdminUsersPage() {
                       {new Date(user.created_at).toLocaleDateString()}
                     </td>
                     <td className="px-6 py-4 text-center">
-                      {user.role === 'admin' ? (
+                      {user.role === 'super_admin' ? (
+                        <Badge variant="primary" className="bg-amber-500/20 text-amber-300 border-amber-500/30">
+                          <Crown className="w-3 h-3 mr-1 inline" /> Super Admin
+                        </Badge>
+                      ) : user.role === 'admin' ? (
                         <Badge variant="primary" className="bg-secondary-500/20 text-secondary-300 border-secondary-500/30">
                           <ShieldAlert className="w-3 h-3 mr-1 inline" /> Admin
                         </Badge>
@@ -139,12 +150,22 @@ export default function AdminUsersPage() {
                     </td>
                     <td className="px-6 py-4 text-right">
                       <div className="flex items-center justify-end gap-2">
-                        <button 
-                          onClick={() => handleUpdateRole(user.id, user.role)}
-                          className="px-3 py-1.5 rounded-lg bg-dark-800 text-xs font-bold text-dark-300 hover:text-white hover:bg-dark-700 transition-colors"
-                        >
-                          Make {user.role === 'admin' ? 'Customer' : 'Admin'}
-                        </button>
+                        {user.role !== 'super_admin' && (
+                          <button 
+                            onClick={() => handleUpdateRole(user.id, user.role)}
+                            className="px-3 py-1.5 rounded-lg bg-dark-800 text-xs font-bold text-dark-300 hover:text-white hover:bg-dark-700 transition-colors"
+                          >
+                            Make {user.role === 'admin' ? 'Customer' : 'Admin'}
+                          </button>
+                        )}
+                        {user.role === 'super_admin' && isSuperAdmin && user.id !== currentUser?.id && (
+                          <button 
+                            onClick={() => handleUpdateRole(user.id, user.role)}
+                            className="px-3 py-1.5 rounded-lg bg-dark-800 text-xs font-bold text-dark-300 hover:text-white hover:bg-dark-700 transition-colors"
+                          >
+                            Demote
+                          </button>
+                        )}
                         <button 
                           onClick={() => handleToggleActive(user.id, user.is_active)}
                           className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${

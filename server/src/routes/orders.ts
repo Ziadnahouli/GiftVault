@@ -202,7 +202,7 @@ router.get('/:orderNumber', optionalAuth, (req: AuthRequest, res: Response) => {
     }
 
     // Only allow owner or admin to view
-    if (req.user && req.user.role !== 'admin' && order.user_id !== req.user.id) {
+    if (req.user && req.user.role !== 'admin' && req.user.role !== 'super_admin' && order.user_id !== req.user.id) {
       res.status(403).json({ error: 'Access denied' });
       return;
     }

@@ -15,13 +15,14 @@ import {
   Globe,
   Tag,
   ShieldCheck,
-  Search
+  Search,
+  Database
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Skeleton } from '@/components/ui/Skeleton';
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
-  const { user, isAdmin, isLoading, logout } = useAuth();
+  const { user, isAdmin, isSuperAdmin, isLoading, logout } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
@@ -45,6 +46,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     { name: 'Regions', path: '/admin/regions', icon: <Globe className="w-5 h-5" /> },
     { name: 'Users', path: '/admin/users', icon: <Users className="w-5 h-5" /> },
     { name: 'Settings', path: '/admin/settings', icon: <Settings className="w-5 h-5" /> },
+    ...(isSuperAdmin
+      ? [{ name: 'Database', path: '/admin/settings/database', icon: <Database className="w-5 h-5" /> }]
+      : []),
   ];
 
   return (
@@ -67,7 +71,10 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         
         <nav className="p-4 space-y-1">
           {menuItems.map((item) => {
-            const isActive = pathname === item.path;
+            const isActive =
+              pathname === item.path ||
+              (item.path !== '/admin' && item.path !== '/admin/settings' && pathname.startsWith(item.path)) ||
+              (item.path === '/admin/settings' && pathname === '/admin/settings');
             return (
               <Link 
                 key={item.name}
@@ -92,7 +99,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             </div>
             <div className="overflow-hidden">
               <div className="text-sm font-bold text-white truncate">{user?.name}</div>
-              <div className="text-xs text-dark-400 truncate">Administrator</div>
+              <div className="text-xs text-dark-400 truncate">
+                {user?.role === 'super_admin' ? 'Super Admin' : 'Administrator'}
+              </div>
             </div>
           </div>
           <button 

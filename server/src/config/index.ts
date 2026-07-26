@@ -1,9 +1,11 @@
 import path from 'path';
 import dotenv from 'dotenv';
 
-dotenv.config({ path: path.resolve(__dirname, '../../../.env') });
+const rootEnvPath = path.resolve(__dirname, '../../../.env');
+dotenv.config({ path: rootEnvPath });
 
 const nodeEnv = process.env.NODE_ENV || 'development';
+const projectRoot = path.dirname(rootEnvPath);
 
 if (nodeEnv === 'production') {
   const requiredVars = ['JWT_SECRET', 'ADMIN_PASSWORD', 'CLIENT_URL'];
@@ -15,6 +17,11 @@ if (nodeEnv === 'production') {
   }
 }
 
+function resolveFromProjectRoot(rawPath: string): string {
+  if (path.isAbsolute(rawPath)) return rawPath;
+  return path.resolve(projectRoot, rawPath);
+}
+
 export const config = {
   port: parseInt(process.env.PORT || '5000', 10),
   nodeEnv,
@@ -23,7 +30,7 @@ export const config = {
     expiresIn: process.env.JWT_EXPIRES_IN || '7d',
   },
   db: {
-    path: process.env.DB_PATH || './data/giftvault.db',
+    path: resolveFromProjectRoot(process.env.DB_PATH || './server/data/giftvault.db'),
   },
   clientUrl: process.env.CLIENT_URL || 'http://localhost:3000',
   whatsappNumber: process.env.WHATSAPP_NUMBER || '96103794986',

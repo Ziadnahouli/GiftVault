@@ -5,14 +5,33 @@ import { config } from '../config';
 export function seedDatabase(): void {
   console.log('🌱 Seeding database...');
 
-  // Create admin user
-  const adminExists = db.prepare('SELECT id FROM users WHERE email = ?').get(config.admin.email);
+  // Create Super Admin user (seeded account always has full privileges)
+  const adminExists = db.prepare('SELECT id, role FROM users WHERE email = ?').get(config.admin.email) as
+    | { id: number; role: string }
+    | undefined;
   if (!adminExists) {
     const hash = bcrypt.hashSync(config.admin.password, 12);
     db.prepare(
       'INSERT INTO users (name, email, password_hash, role) VALUES (?, ?, ?, ?)'
-    ).run('Admin', config.admin.email, hash, 'admin');
-    console.log('✅ Admin user created');
+    ).run('Super Admin', config.admin.email, hash, 'super_admin');
+    console.log('✅ Super Admin user created');
+  } else if (adminExists.role !== 'super_admin') {
+    db.prepare('UPDATE users SET role = ? WHERE id = ?').run('super_admin', adminExists.id);
+    console.log('✅ Seeded admin promoted to Super Admin');
+  }
+
+  // Ensure at least one Super Admin exists (promote first admin if needed)
+  const superAdminCount = (
+    db.prepare(`SELECT COUNT(*) as c FROM users WHERE role = 'super_admin'`).get() as { c: number }
+  ).c;
+  if (superAdminCount === 0) {
+    const firstAdmin = db.prepare(`SELECT id FROM users WHERE role = 'admin' ORDER BY id ASC LIMIT 1`).get() as
+      | { id: number }
+      | undefined;
+    if (firstAdmin) {
+      db.prepare('UPDATE users SET role = ? WHERE id = ?').run('super_admin', firstAdmin.id);
+      console.log('✅ Existing admin promoted to Super Admin');
+    }
   }
 
   // Seed regions

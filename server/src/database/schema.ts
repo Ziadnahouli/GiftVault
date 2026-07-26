@@ -1,28 +1,93 @@
-import Database, { Database as BetterSqlite3Database } from 'better-sqlite3';
+import Database from 'better-sqlite3';
+import type { Database as BetterSqlite3Database } from 'better-sqlite3';
 import path from 'path';
 import fs from 'fs';
 import { config } from '../config';
 
-const dbDir = path.dirname(path.resolve(config.db.path));
+export function getResolvedDbPath(): string {
+  return path.resolve(config.db.path);
+}
+
+export function getDbDirectory(): string {
+  return path.dirname(getResolvedDbPath());
+}
+
+export function getBackupDirectory(): string {
+  const backupDir = path.join(getDbDirectory(), 'backups');
+  if (!fs.existsSync(backupDir)) {
+    fs.mkdirSync(backupDir, { recursive: true });
+  }
+  return backupDir;
+}
+
+const dbDir = getDbDirectory();
 if (!fs.existsSync(dbDir)) {
   fs.mkdirSync(dbDir, { recursive: true });
 }
 
-const db: BetterSqlite3Database = new Database(path.resolve(config.db.path));
+let _db: BetterSqlite3Database = openDatabaseConnection(getResolvedDbPath());
 
-// Enable WAL mode for better performance
-db.pragma('journal_mode = WAL');
-db.pragma('foreign_keys = ON');
+function openDatabaseConnection(dbPath: string): BetterSqlite3Database {
+  const database = new Database(dbPath);
+  database.pragma('journal_mode = WAL');
+  database.pragma('foreign_keys = ON');
+  return database;
+}
+
+/**
+ * Proxy so existing `import db from ...` keeps working after close/reopen.
+ */
+const db: BetterSqlite3Database = new Proxy({} as BetterSqlite3Database, {
+  get(_target, prop, receiver) {
+    const value = Reflect.get(_db as object, prop, receiver);
+    if (typeof value === 'function') {
+      return (value as (...args: unknown[]) => unknown).bind(_db);
+    }
+    return value;
+  },
+  set(_target, prop, value) {
+    return Reflect.set(_db as object, prop, value);
+  },
+});
+
+export function getDatabase(): BetterSqlite3Database {
+  return _db;
+}
+
+export function isDatabaseOpen(): boolean {
+  try {
+    return _db.open;
+  } catch {
+    return false;
+  }
+}
+
+export function closeDatabase(): void {
+  if (!_db.open) return;
+  try {
+    _db.pragma('wal_checkpoint(TRUNCATE)');
+  } catch {
+    // Best-effort checkpoint before close
+  }
+  _db.close();
+}
+
+export function reopenDatabase(): void {
+  if (_db.open) {
+    closeDatabase();
+  }
+  _db = openDatabaseConnection(getResolvedDbPath());
+}
 
 export function initializeDatabase(): void {
-  db.exec(`
+  _db.exec(`
     -- Users table
     CREATE TABLE IF NOT EXISTS users (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       name TEXT NOT NULL,
       email TEXT UNIQUE NOT NULL,
       password_hash TEXT NOT NULL,
-      role TEXT DEFAULT 'customer' CHECK(role IN ('customer', 'admin')),
+      role TEXT DEFAULT 'customer' CHECK(role IN ('customer', 'admin', 'super_admin')),
       avatar TEXT,
       country TEXT,
       whatsapp TEXT,
@@ -236,6 +301,22 @@ export function initializeDatabase(): void {
       updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
     );
 
+    -- Database management audit log
+    CREATE TABLE IF NOT EXISTS database_audit_log (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      admin_id INTEGER,
+      admin_name TEXT NOT NULL,
+      admin_email TEXT,
+      ip_address TEXT,
+      action TEXT NOT NULL,
+      old_database_size INTEGER,
+      new_database_size INTEGER,
+      backup_name TEXT,
+      success INTEGER NOT NULL DEFAULT 0,
+      error_message TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
+
     -- Indexes for performance
     CREATE INDEX IF NOT EXISTS idx_products_category ON products(category_id);
     CREATE INDEX IF NOT EXISTS idx_products_slug ON products(slug);
@@ -247,6 +328,7 @@ export function initializeDatabase(): void {
     CREATE INDEX IF NOT EXISTS idx_order_items_order ON order_items(order_id);
     CREATE INDEX IF NOT EXISTS idx_reviews_product ON reviews(product_id);
     CREATE INDEX IF NOT EXISTS idx_wishlist_user ON wishlist(user_id);
+    CREATE INDEX IF NOT EXISTS idx_database_audit_log_created ON database_audit_log(created_at);
   `);
 }
 
@@ -256,10 +338,57 @@ export function initializeDatabase(): void {
  */
 function safeAddColumn(table: string, column: string, definition: string): void {
   try {
-    db.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${definition}`);
-  } catch (e: any) {
+    _db.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${definition}`);
+  } catch {
     // Column already exists — ignore
   }
+}
+
+function migrateUsersRoleConstraint(): void {
+  const row = _db
+    .prepare(`SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'users'`)
+    .get() as { sql?: string } | undefined;
+
+  if (!row?.sql || row.sql.includes('super_admin')) {
+    return;
+  }
+
+  _db.pragma('foreign_keys = OFF');
+  const migrate = _db.transaction(() => {
+    _db.exec(`
+      CREATE TABLE users_new (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL,
+        email TEXT UNIQUE NOT NULL,
+        password_hash TEXT NOT NULL,
+        role TEXT DEFAULT 'customer' CHECK(role IN ('customer', 'admin', 'super_admin')),
+        avatar TEXT,
+        country TEXT,
+        whatsapp TEXT,
+        preferred_lang TEXT DEFAULT 'en',
+        preferred_currency TEXT DEFAULT 'USD',
+        is_active INTEGER DEFAULT 1,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      );
+
+      INSERT INTO users_new (
+        id, name, email, password_hash, role, avatar, country, whatsapp,
+        preferred_lang, preferred_currency, is_active, created_at, updated_at
+      )
+      SELECT
+        id, name, email, password_hash, role, avatar, country, whatsapp,
+        preferred_lang, preferred_currency, is_active, created_at, updated_at
+      FROM users;
+
+      DROP TABLE users;
+      ALTER TABLE users_new RENAME TO users;
+    `);
+  });
+
+  migrate();
+  _db.pragma('foreign_keys = ON');
+  console.log('✅ Migrated users role constraint to include super_admin');
 }
 
 /**
@@ -267,6 +396,27 @@ function safeAddColumn(table: string, column: string, definition: string): void 
  * Safe to call multiple times — idempotent.
  */
 export function runMigrations(): void {
+  migrateUsersRoleConstraint();
+
+  // Ensure audit table exists on older databases
+  _db.exec(`
+    CREATE TABLE IF NOT EXISTS database_audit_log (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      admin_id INTEGER,
+      admin_name TEXT NOT NULL,
+      admin_email TEXT,
+      ip_address TEXT,
+      action TEXT NOT NULL,
+      old_database_size INTEGER,
+      new_database_size INTEGER,
+      backup_name TEXT,
+      success INTEGER NOT NULL DEFAULT 0,
+      error_message TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
+    CREATE INDEX IF NOT EXISTS idx_database_audit_log_created ON database_audit_log(created_at);
+  `);
+
   // product_regions new columns
   safeAddColumn('product_regions', 'description_en', "TEXT DEFAULT ''");
   safeAddColumn('product_regions', 'description_ar', "TEXT DEFAULT ''");
@@ -285,7 +435,7 @@ export function runMigrations(): void {
 
   // Create indexes for new columns safely
   try {
-    db.exec(`
+    _db.exec(`
       CREATE INDEX IF NOT EXISTS idx_gift_card_values_sku ON gift_card_values(sku);
       CREATE INDEX IF NOT EXISTS idx_gift_card_values_stock ON gift_card_values(stock);
     `);

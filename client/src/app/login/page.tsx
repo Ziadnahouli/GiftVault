@@ -30,7 +30,7 @@ export default function LoginPage() {
 
       login(res.token, res.user);
       toast.success(t('common.success') || 'Logged in successfully');
-      router.push(res.user.role === 'admin' ? '/admin' : '/dashboard');
+      router.push(res.user.role === 'admin' || res.user.role === 'super_admin' ? '/admin' : '/dashboard');
     } catch (error: any) {
       toast.error(error.message || 'Login failed');
     } finally {

@@ -24,6 +24,8 @@ import settingsRoutes from './routes/settings';
 import couponRoutes from './routes/coupons';
 import adminRoutes from './routes/admin';
 import inventoryRoutes from './routes/inventory';
+import databaseRoutes from './routes/database';
+import { maintenanceGuard } from './middleware/maintenance';
 
 const app = express();
 
@@ -31,6 +33,9 @@ const app = express();
 
 // Trust Railway's reverse proxy (required for rate limiting behind a proxy)
 app.set('trust proxy', 1);
+
+// Block traffic briefly during live database replace/restore
+app.use(maintenanceGuard);
 
 // Helmet for security headers
 app.use(helmet({
@@ -87,6 +92,7 @@ app.use('/api/settings', settingsRoutes);
 app.use('/api/coupons', couponRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/admin/inventory', inventoryRoutes);
+app.use('/api/admin/database', databaseRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {

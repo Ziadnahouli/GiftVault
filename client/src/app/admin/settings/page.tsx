@@ -1,11 +1,14 @@
 "use client";
 
 import React, { useEffect, useState } from 'react';
+import Link from 'next/link';
 import { fetchApi } from '@/lib/api';
-import { Save, Settings, Globe, Mail, Phone, ShoppingBag } from 'lucide-react';
+import { Save, Settings, Globe, Mail, Phone, ShoppingBag, Database } from 'lucide-react';
 import { toast } from 'react-hot-toast';
+import { useAuth } from '@/contexts/AuthContext';
 
 export default function AdminSettingsPage() {
+  const { isSuperAdmin } = useAuth();
   const [settings, setSettings] = useState<Record<string, string>>({});
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -182,6 +185,27 @@ export default function AdminSettingsPage() {
             </div>
           </div>
         </div>
+
+        {/* Database Management (Super Admin) */}
+        {isSuperAdmin && (
+          <div className="glass-card overflow-hidden">
+            <div className="p-4 border-b border-dark-800 bg-dark-900/50 flex items-center gap-3">
+              <Database className="w-5 h-5 text-amber-400" />
+              <h2 className="text-lg font-bold text-white">Database</h2>
+            </div>
+            <div className="p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div>
+                <p className="text-white font-medium mb-1">Database Management</p>
+                <p className="text-sm text-dark-400">
+                  Backup, restore, and replace the SQLite database. Super Admin only.
+                </p>
+              </div>
+              <Link href="/admin/settings/database" className="btn-primary shrink-0">
+                Open Database Management
+              </Link>
+            </div>
+          </div>
+        )}
 
       </div>
     </div>
