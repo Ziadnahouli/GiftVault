@@ -27,6 +27,9 @@ export default function CheckoutPage() {
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  const feeUsd = subtotalUsd * 0.05;
+  const totalUsd = subtotalUsd + feeUsd;
+
   // If cart is empty, redirect to shop
   if (items.length === 0) {
     return (
@@ -82,9 +85,9 @@ export default function CheckoutPage() {
         body: JSON.stringify(orderPayload)
       });
 
-      // 2. Generate WhatsApp message
+      // 2. Generate WhatsApp message — match checkout UI / server total (includes 5% fee)
       const orderNumber = res.order.order_number;
-      const displayTotal = res.order.display_total;
+      const orderTotalUsd = Number(res.order.total_usd);
       
       let message = `*NEW ORDER: ${orderNumber}*\n\n`;
       message += `*Customer Details:*\n`;
@@ -99,10 +102,12 @@ export default function CheckoutPage() {
         message += `${index + 1}. ${item.productNameEn}\n`;
         message += `   Region: ${item.regionName} (${item.regionCode})\n`;
         message += `   Value: ${item.faceValue} ${item.currencyCode}\n`;
-        message += `   Quantity: ${item.quantity}\n`;
+        message += `   Qty: ${item.quantity} × ${formatPrice(item.priceUsd)}\n`;
       });
       
-      message += `\n*Total: ${formatPrice(subtotalUsd)}*\n`;
+      message += `\nSubtotal: ${formatPrice(subtotalUsd)}\n`;
+      message += `Fees (5%): ${formatPrice(feeUsd)}\n`;
+      message += `*Total: ${formatPrice(orderTotalUsd)}*\n`;
       
       // Fetch whatsapp number from settings
       const settingsRes = await fetchApi('/settings/public');
@@ -260,11 +265,11 @@ export default function CheckoutPage() {
                 </div>
                 <div className="flex justify-between text-dark-300">
                   <span>Fees (5%)</span>
-                  <span>{formatPrice(subtotalUsd * 0.05)}</span>
+                  <span>{formatPrice(feeUsd)}</span>
                 </div>
                 <div className="flex justify-between text-white text-lg font-bold mt-4 pt-4 border-t border-dark-800">
                   <span>{t('cart.total')}</span>
-                  <span className="text-primary-400">{formatPrice(subtotalUsd * 1.05)}</span>
+                  <span className="text-primary-400">{formatPrice(totalUsd)}</span>
                 </div>
               </div>
 
