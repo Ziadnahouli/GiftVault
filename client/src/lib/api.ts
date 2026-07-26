@@ -1,5 +1,21 @@
 export const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
 
+function clearAuthAndRedirect() {
+  if (typeof window === 'undefined') return;
+  localStorage.removeItem('token');
+  localStorage.removeItem('user');
+  window.dispatchEvent(new Event('auth:unauthorized'));
+}
+
+function shouldForceLogout(endpoint: string, status: number): boolean {
+  if (status !== 401) return false;
+  // Don't logout while attempting to sign in / register
+  if (endpoint.startsWith('/auth/login') || endpoint.startsWith('/auth/register')) {
+    return false;
+  }
+  return true;
+}
+
 export async function fetchApi(endpoint: string, options: RequestInit = {}) {
   const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
   
@@ -26,6 +42,11 @@ export async function fetchApi(endpoint: string, options: RequestInit = {}) {
     } catch {
       throw new Error(`API Error: ${response.status}`);
     }
+
+    if (shouldForceLogout(endpoint, response.status)) {
+      clearAuthAndRedirect();
+    }
+
     const error = new Error(errorData.error || `API Error: ${response.status}`) as Error & {
       status?: number;
       data?: any;
@@ -71,6 +92,9 @@ export async function uploadApi(
       if (xhr.status >= 200 && xhr.status < 300) {
         resolve(data);
       } else {
+        if (shouldForceLogout(endpoint, xhr.status)) {
+          clearAuthAndRedirect();
+        }
         const error = new Error(data.error || `API Error: ${xhr.status}`) as Error & {
           status?: number;
           data?: any;
@@ -98,6 +122,9 @@ export async function downloadApi(endpoint: string, filename: string): Promise<v
       errorData = await response.json();
     } catch {
       // ignore
+    }
+    if (shouldForceLogout(endpoint, response.status)) {
+      clearAuthAndRedirect();
     }
     throw new Error(errorData.error || `Download failed: ${response.status}`);
   }
