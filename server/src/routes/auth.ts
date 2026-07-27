@@ -184,16 +184,12 @@ router.post('/register', async (req: AuthRequest, res: Response) => {
     } else {
       verificationType = 'email';
       verificationCode = generateNumericAuthToken(userId, 'email_verification', undefined, 1440);
-      const linkToken = generateAuthToken(userId, 'email_verification', undefined, 24);
-      const verificationLink = `${config.clientUrl}/verify-email?token=${linkToken}`;
 
-      sendWelcomeEmail(sanitize(name), cleanEmail).catch(() => {});
-      sendVerificationEmail(sanitize(name), cleanEmail, verificationLink).catch(() => {});
       sendVerificationCodeEmail(sanitize(name), cleanEmail, verificationCode).catch((err) => {
         console.error(`❌ Error sending verification code email to ${cleanEmail}:`, err?.message || err);
       });
       console.log(`🔑 [EMAIL VERIFICATION CODE FOR ${cleanEmail}]: ${verificationCode}`);
-      message = `Registration successful! A 6-digit verification code has been sent to ${cleanEmail}. Please check your inbox or code box below to complete registration.`;
+      message = `Registration successful! A 6-digit verification code has been sent to ${cleanEmail}. Please check your inbox to complete registration.`;
     }
 
     // Create session & JWT token
@@ -498,8 +494,11 @@ router.post('/verify-code', async (req: AuthRequest, res: Response) => {
     // Verify based on token type
     if (tokenRecord.type === 'email_verification') {
       db.prepare('UPDATE users SET email_verified = 1, updated_at = CURRENT_TIMESTAMP WHERE id = ?').run(user.id);
+      // Send Welcome Email ONLY after verification succeeds
+      sendWelcomeEmail(user.name, user.email).catch(() => {});
     } else if (tokenRecord.type === 'phone_otp') {
       db.prepare('UPDATE users SET phone_verified = 1, updated_at = CURRENT_TIMESTAMP WHERE id = ?').run(user.id);
+      sendWelcomeEmail(user.name, user.email).catch(() => {});
     }
 
     consumeAuthToken(cleanCode);
