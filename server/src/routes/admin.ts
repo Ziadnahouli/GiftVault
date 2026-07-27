@@ -1089,4 +1089,46 @@ router.post('/users/:id/logout-all', (req: AuthRequest, res: Response) => {
   }
 });
 
+// DELETE /api/admin/users/:id (Permanently Delete User Account)
+router.delete('/users/:id', (req: AuthRequest, res: Response) => {
+  try {
+    const targetUserId = parseInt(req.params.id, 10);
+    const currentAdminId = req.user!.id;
+
+    if (isNaN(targetUserId)) {
+      res.status(400).json({ error: 'Invalid user ID' });
+      return;
+    }
+
+    if (targetUserId === currentAdminId) {
+      res.status(400).json({ error: 'You cannot delete your own admin account while logged in.' });
+      return;
+    }
+
+    const user = db.prepare('SELECT id, name, email, role FROM users WHERE id = ?').get(targetUserId) as any;
+    if (!user) {
+      res.status(404).json({ error: 'User not found' });
+      return;
+    }
+
+    // Prevent deleting super_admin unless current logged in admin is also super_admin
+    if (user.role === 'super_admin' && req.user!.role !== 'super_admin') {
+      res.status(403).json({ error: 'Only a Super Admin can delete another Super Admin account.' });
+      return;
+    }
+
+    // Perform cascade cleanup
+    db.prepare('DELETE FROM user_sessions WHERE user_id = ?').run(targetUserId);
+    db.prepare('DELETE FROM auth_tokens WHERE user_id = ?').run(targetUserId);
+    db.prepare('DELETE FROM wishlist WHERE user_id = ?').run(targetUserId);
+    db.prepare('DELETE FROM reviews WHERE user_id = ?').run(targetUserId);
+    db.prepare('DELETE FROM users WHERE id = ?').run(targetUserId);
+
+    res.json({ message: `User "${user.name}" (#${targetUserId}) has been permanently deleted.` });
+  } catch (error: any) {
+    console.error('Delete user error:', error);
+    res.status(500).json({ error: 'Failed to delete user account' });
+  }
+});
+
 export default router;

@@ -19,6 +19,7 @@ import {
   Flame,
   Smartphone,
   Laptop,
+  Trash2,
 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { useAuth } from '@/contexts/AuthContext';
@@ -103,6 +104,28 @@ export default function AdminUsersPage() {
       }
     } catch (error: any) {
       toast.error(error.message || 'Failed to revoke user sessions');
+    }
+  };
+
+  const handleDeleteUser = async (id: number, name: string) => {
+    if (currentUser?.id === id) {
+      toast.error('You cannot delete your own account while logged in');
+      return;
+    }
+
+    if (!confirm(`Are you sure you want to permanently delete user "${name}" (ID #${id})?\n\nThis will remove their profile, active sessions, and verification tokens. This action cannot be undone.`)) {
+      return;
+    }
+
+    try {
+      const res = await fetchApi(`/admin/users/${id}`, { method: 'DELETE' });
+      toast.success(res.message || 'User deleted successfully');
+      setUsers(users.filter((u) => u.id !== id));
+      if (activeUserModal?.id === id) {
+        setActiveUserModal(null);
+      }
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to delete user');
     }
   };
 
@@ -283,6 +306,15 @@ export default function AdminUsersPage() {
                           className="p-1.5 rounded-lg bg-primary-500/10 border border-primary-500/20 text-primary-400 hover:bg-primary-500/20 transition-colors"
                         >
                           <Laptop className="w-3.5 h-3.5" />
+                        </button>
+
+                        <button
+                          onClick={() => handleDeleteUser(u.id, u.name)}
+                          disabled={currentUser?.id === u.id}
+                          title={currentUser?.id === u.id ? 'You cannot delete yourself' : 'Permanently Delete User'}
+                          className="p-1.5 rounded-lg bg-rose-500/10 border border-rose-500/20 text-rose-400 hover:bg-rose-500/20 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
                         </button>
                       </div>
                     </td>
