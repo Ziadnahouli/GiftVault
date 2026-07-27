@@ -139,6 +139,14 @@ export default function RegisterPage() {
     setIsLoading(true);
 
     try {
+      if (registerMode === 'phone' && confirmationResult) {
+        try {
+          await confirmationResult.confirm(verificationCode.trim());
+        } catch (firebaseErr: any) {
+          console.warn('Firebase SMS confirmation note:', firebaseErr?.message || firebaseErr);
+        }
+      }
+
       const targetIdentifier = registerMode === 'email' ? formData.email : formData.phoneNumber;
       const res = await fetchApi('/auth/verify-code', {
         method: 'POST',
