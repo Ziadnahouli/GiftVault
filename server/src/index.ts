@@ -29,53 +29,38 @@ import { maintenanceGuard } from './middleware/maintenance';
 
 const app = express();
 
-// ==================== SECURITY ====================
+// ==================== SECURITY & CORS ====================
 
 // Trust Railway's reverse proxy (required for rate limiting behind a proxy)
 app.set('trust proxy', 1);
+
+// Foolproof CORS middleware: must run FIRST before helmet, maintenance, or rate limiting
+app.use((req, res, next) => {
+  const origin = req.headers.origin;
+  if (origin) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+  } else {
+    res.setHeader('Access-Control-Allow-Origin', '*');
+  }
+  res.setHeader('Access-Control-Allow-Credentials', 'true');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, x-session-token, X-Requested-With, Accept');
+
+  // Respond immediately to OPTIONS preflight requests
+  if (req.method === 'OPTIONS') {
+    res.status(200).end();
+    return;
+  }
+  next();
+});
 
 // Block traffic briefly during live database replace/restore
 app.use(maintenanceGuard);
 
 // Helmet for security headers
-app.use(helmet({
-  crossOriginResourcePolicy: { policy: 'cross-origin' },
-}));
-
-// Parse allowed origins from CLIENT_URL (supports comma-separated origins)
-const allowedOrigins = (config.clientUrl || '')
-  .split(',')
-  .map((url) => url.trim().replace(/\/$/, ''))
-  .filter(Boolean);
-
-// Always allow standard dev origins
-if (!allowedOrigins.includes('http://localhost:3000')) {
-  allowedOrigins.push('http://localhost:3000');
-}
-
 app.use(
-  cors({
-    origin: (origin, callback) => {
-      // Allow requests with no origin (like mobile apps, curl, server-to-server)
-      if (!origin) return callback(null, true);
-
-      const cleanOrigin = origin.replace(/\/$/, '');
-      if (
-        allowedOrigins.includes(cleanOrigin) ||
-        allowedOrigins.includes('*') ||
-        cleanOrigin.endsWith('.gift-vault.me') ||
-        cleanOrigin === 'https://gift-vault.me' ||
-        cleanOrigin.endsWith('.vercel.app')
-      ) {
-        return callback(null, true);
-      }
-
-      console.warn(`⚠️ CORS blocked request from origin: ${origin}`);
-      return callback(null, true); // Allow to prevent hard CORS blocks in production while logging warning
-    },
-    credentials: true,
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'x-session-token', 'X-Requested-With', 'Accept'],
+  helmet({
+    crossOriginResourcePolicy: { policy: 'cross-origin' },
   })
 );
 
