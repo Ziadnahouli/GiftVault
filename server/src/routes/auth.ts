@@ -92,29 +92,43 @@ router.post('/register', async (req: AuthRequest, res: Response) => {
     const { name, email, phoneNumber, password, country, whatsapp, registrationMethod } = validation.data;
 
     const providedEmail = email ? email.toLowerCase().trim() : '';
-    const cleanPhone = phoneNumber ? phoneNumber.trim() : (whatsapp ? whatsapp.trim() : null);
+
+    // Normalize phone number (keep leading +, strip formatting)
+    let cleanPhone: string | null = null;
+    let phoneDigits = '';
+    const rawPhone = phoneNumber ? phoneNumber.trim() : (whatsapp ? whatsapp.trim() : '');
+    if (rawPhone) {
+      phoneDigits = rawPhone.replace(/\D/g, '');
+      const hasPlus = rawPhone.startsWith('+');
+      cleanPhone = phoneDigits ? (hasPlus ? `+${phoneDigits}` : `+${phoneDigits}`) : null;
+    }
 
     // Determine actual registration method (email vs phone)
     const method = registrationMethod || (providedEmail ? 'email' : 'phone');
 
     let cleanEmail = providedEmail;
     if (method === 'phone' && !cleanEmail) {
-      const sanitizedPhoneDigits = (cleanPhone || Date.now().toString()).replace(/\D/g, '');
+      const sanitizedPhoneDigits = phoneDigits || Date.now().toString();
       cleanEmail = `user_${sanitizedPhoneDigits}@phone.giftvault.internal`;
     }
 
     // Duplicate Email check
-    if (providedEmail) {
+    if (cleanEmail) {
       const existingEmail = db.prepare('SELECT id FROM users WHERE email = ?').get(cleanEmail);
       if (existingEmail) {
-        res.status(409).json({ error: 'Email address is already registered' });
+        res.status(409).json({ error: method === 'phone' ? 'This phone number is already registered' : 'Email address is already registered' });
         return;
       }
     }
 
     // Duplicate Phone check if provided
-    if (cleanPhone) {
-      const existingPhone = db.prepare('SELECT id FROM users WHERE phone_number = ? OR whatsapp = ?').get(cleanPhone, cleanPhone);
+    if (cleanPhone && phoneDigits) {
+      const existingPhone = db.prepare(`
+        SELECT id FROM users 
+        WHERE phone_number = ? 
+           OR whatsapp = ? 
+           OR REPLACE(REPLACE(REPLACE(REPLACE(phone_number, ' ', ''), '-', ''), '+', ''), '(', '') = ?
+      `).get(cleanPhone, cleanPhone, phoneDigits);
       if (existingPhone) {
         res.status(409).json({ error: 'Phone number is already registered to another account' });
         return;
