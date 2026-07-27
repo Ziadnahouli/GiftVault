@@ -124,8 +124,10 @@ app.use((err: any, req: express.Request, res: express.Response, next: express.Ne
 // ==================== START ====================
 
 async function start() {
-  app.listen(config.port, '0.0.0.0', () => {
-    console.log(`🚀 GiftVault API running on port ${config.port}`);
+  const port = process.env.PORT ? parseInt(process.env.PORT, 10) : (config.port || 5000);
+
+  app.listen(port, '0.0.0.0', () => {
+    console.log(`🚀 GiftVault API running on port ${port}`);
     console.log(`📋 Environment: ${config.nodeEnv}`);
     console.log(`🌐 Client URL: ${config.clientUrl}`);
   });

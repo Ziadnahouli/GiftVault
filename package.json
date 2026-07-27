@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "build": "cd server && npm install && npm run build",
-    "start": "cd server && npm run start"
+    "build": "if [ -d \"server\" ]; then cd server && npm install && npm run build; else npm run build; fi",
+    "start": "if [ -d \"server\" ]; then cd server && npm run start; else node dist/index.js; fi"
   }
 }
