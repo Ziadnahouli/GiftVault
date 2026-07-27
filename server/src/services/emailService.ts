@@ -1,6 +1,8 @@
 import nodemailer from 'nodemailer';
 import { config } from '../config';
 
+const RESEND_API_KEY = process.env.RESEND_API_KEY || '';
+
 let transporter: nodemailer.Transporter | null = null;
 
 if (config.email.user && config.email.pass) {
@@ -160,40 +162,37 @@ async function sendMail(to: string, subject: string, html: string): Promise<bool
     return true;
   }
 
-  // 1. Resend HTTP API Support (Uses HTTPS Port 443 - Never blocked by Railway)
-  if (process.env.RESEND_API_KEY) {
+  // 1. Primary Email Engine: Resend REST API (HTTPS Port 443 - Never blocked by Railway)
+  if (RESEND_API_KEY) {
     try {
-      const fromHeader = (config.email.from && !config.email.from.includes('noreply@giftvault.com'))
-        ? config.email.from
-        : 'GiftVault <onboarding@resend.dev>';
-
       const response = await fetch('https://api.resend.com/emails', {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${process.env.RESEND_API_KEY}`,
+          'Authorization': `Bearer ${RESEND_API_KEY}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          from: fromHeader,
+          from: 'onboarding@resend.dev',
           to: [to],
           subject,
           html,
         }),
       });
 
-      if (response.ok) {
-        console.log(`✉️ [RESEND HTTP API] Successfully sent email to ${to}`);
+      const data = await response.json() as any;
+
+      if (response.ok && data.id) {
+        console.log(`✉️ [RESEND SUCCESS] Sent email to ${to} (ID: ${data.id})`);
         return true;
       } else {
-        const errText = await response.text();
-        console.error(`❌ [RESEND HTTP API] Error sending email to ${to}:`, errText);
+        console.error(`❌ [RESEND API ERROR] Failed to send email to ${to}:`, data);
       }
     } catch (resendErr: any) {
-      console.error(`❌ [RESEND HTTP API] Connection error:`, resendErr.message);
+      console.error(`❌ [RESEND EXCEPTION] Error sending email to ${to}:`, resendErr?.message || resendErr);
     }
   }
 
-  // 2. Nodemailer SMTP Transport
+  // 2. Fallback: Nodemailer SMTP Transport
   if (transporter) {
     try {
       const fromHeader = (config.email.from && !config.email.from.includes('noreply@giftvault.com'))
