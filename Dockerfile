@@ -2,6 +2,9 @@ FROM node:20-slim
 
 WORKDIR /app/server
 
+# Install build tools for native addons
+RUN apt-get update && apt-get install -y python3 make g++ sqlite3 && rm -rf /var/lib/apt/lists/*
+
 # Copy server package files
 COPY package.json ../package.json
 COPY server/package.json ./
