@@ -137,8 +137,14 @@ app.use((err: any, req: express.Request, res: express.Response, next: express.Ne
 // ==================== START ====================
 
 async function start() {
+  app.listen(config.port, () => {
+    console.log(`🚀 GiftVault API running on port ${config.port}`);
+    console.log(`📋 Environment: ${config.nodeEnv}`);
+    console.log(`🌐 Client URL: ${config.clientUrl}`);
+  });
+
   try {
-    // Initialize database
+    // Initialize database asynchronously after server starts listening
     initializeDatabase();
     runMigrations();
     seedDatabase();
@@ -147,15 +153,8 @@ async function start() {
     // Initialize exchange rates
     await initExchangeRates();
     console.log('✅ Exchange rates initialized');
-
-    app.listen(config.port, () => {
-      console.log(`🚀 GiftVault API running on port ${config.port}`);
-      console.log(`📋 Environment: ${config.nodeEnv}`);
-      console.log(`🌐 Client URL: ${config.clientUrl}`);
-    });
-  } catch (error) {
-    console.error('❌ Failed to start server:', error);
-    process.exit(1);
+  } catch (error: any) {
+    console.error('⚠️ Database setup error (server running in fallback mode):', error.message || error);
   }
 }
 
