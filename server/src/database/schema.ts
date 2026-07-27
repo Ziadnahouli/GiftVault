@@ -134,18 +134,41 @@ export function initializeDatabase(): void {
       FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
     );
 
-    -- Auth Tokens table (for email verification, password reset, email & phone change)
+    -- Auth Tokens table (for email verification, phone OTP, password reset, email & phone change)
     CREATE TABLE IF NOT EXISTS auth_tokens (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       user_id INTEGER NOT NULL,
       token TEXT UNIQUE NOT NULL,
-      type TEXT NOT NULL CHECK(type IN ('email_verification', 'password_reset', 'email_change', 'phone_change')),
+      type TEXT NOT NULL CHECK(type IN ('email_verification', 'phone_otp', 'password_reset', 'email_change', 'phone_change')),
       new_value TEXT,
       expires_at DATETIME NOT NULL,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
     );
+  `);
 
+  // Run automatic migration if existing auth_tokens table lacks phone_otp check
+  try {
+    _db.exec(`
+      CREATE TABLE IF NOT EXISTS auth_tokens_new (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL,
+        token TEXT UNIQUE NOT NULL,
+        type TEXT NOT NULL CHECK(type IN ('email_verification', 'phone_otp', 'password_reset', 'email_change', 'phone_change')),
+        new_value TEXT,
+        expires_at DATETIME NOT NULL,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+      );
+      INSERT OR IGNORE INTO auth_tokens_new SELECT * FROM auth_tokens;
+      DROP TABLE auth_tokens;
+      ALTER TABLE auth_tokens_new RENAME TO auth_tokens;
+    `);
+  } catch {
+    // Table already migrated
+  }
+
+  _db.exec(`
     -- Categories table
     CREATE TABLE IF NOT EXISTS categories (
       id INTEGER PRIMARY KEY AUTOINCREMENT,

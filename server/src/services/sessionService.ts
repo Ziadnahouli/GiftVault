@@ -145,12 +145,21 @@ export function generateNumericAuthToken(
   const expiresAt = new Date(Date.now() + expiresInMinutes * 60 * 1000).toISOString();
 
   // Invalidate previous tokens of same type for user
-  db.prepare(`DELETE FROM auth_tokens WHERE user_id = ? AND type = ?`).run(userId, type);
+  try {
+    db.prepare(`DELETE FROM auth_tokens WHERE user_id = ? AND (type = ? OR type = 'phone_change')`).run(userId, type);
 
-  db.prepare(`
-    INSERT INTO auth_tokens (user_id, token, type, new_value, expires_at)
-    VALUES (?, ?, ?, ?, ?)
-  `).run(userId, code, type, newValue || null, expiresAt);
+    db.prepare(`
+      INSERT INTO auth_tokens (user_id, token, type, new_value, expires_at)
+      VALUES (?, ?, ?, ?, ?)
+    `).run(userId, code, type, newValue || null, expiresAt);
+  } catch (err) {
+    // Fallback if legacy SQLite table has rigid CHECK constraint without 'phone_otp'
+    const fallbackType = type === 'phone_otp' ? 'phone_change' : type;
+    db.prepare(`
+      INSERT INTO auth_tokens (user_id, token, type, new_value, expires_at)
+      VALUES (?, ?, ?, ?, ?)
+    `).run(userId, code, fallbackType, newValue || null, expiresAt);
+  }
 
   return code;
 }
