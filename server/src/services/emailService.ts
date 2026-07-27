@@ -8,11 +8,12 @@ if (config.email.user && config.email.pass) {
     host: config.email.host,
     port: config.email.port,
     secure: config.email.port === 465,
+    family: 4, // Force IPv4 to prevent Railway Docker IPv6 ENETUNREACH errors
     auth: {
       user: config.email.user,
       pass: config.email.pass,
     },
-  });
+  } as any);
 } else {
   console.log('📧 SMTP credentials not configured. Emails will be logged to console in dev mode.');
 }
