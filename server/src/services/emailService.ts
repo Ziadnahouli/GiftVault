@@ -150,14 +150,25 @@ function renderBaseTemplate(title: string, bodyContent: string): string {
 }
 
 async function sendMail(to: string, subject: string, html: string): Promise<boolean> {
+  // Skip sending network email to internal dummy placeholder domains
+  if (!to || to.endsWith('.internal') || to.endsWith('.user') || to.endsWith('@giftvault.com')) {
+    console.log(`ℹ️ [EMAIL SERVICE] Skipping email to internal dummy address: ${to}`);
+    return true;
+  }
+
   if (transporter) {
     try {
+      const fromHeader = (config.email.from && !config.email.from.includes('noreply@giftvault.com'))
+        ? config.email.from
+        : (config.email.user ? `GiftVault <${config.email.user}>` : 'GiftVault <noreply@giftvault.com>');
+
       await transporter.sendMail({
-        from: config.email.from,
+        from: fromHeader,
         to,
         subject,
         html,
       });
+      console.log(`✉️ [EMAIL SERVICE] Successfully sent email to ${to}`);
       return true;
     } catch (err: any) {
       console.error(`Failed to send email to ${to}:`, err.message);
