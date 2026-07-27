@@ -181,11 +181,11 @@ async function sendMail(to: string, subject: string, html: string): Promise<bool
 
       const data = await response.json() as any;
 
-      if (response.ok && data.id) {
-        console.log(`✉️ [RESEND SUCCESS] Sent email to ${to} (ID: ${data.id})`);
+      if (response.ok && data?.id) {
+        console.log(`✉️ [RESEND SUCCESS] Sent email to ${to} (Message ID: ${data.id})`);
         return true;
       } else {
-        console.error(`❌ [RESEND API ERROR] Failed to send email to ${to}:`, data);
+        console.error(`❌ [RESEND API ERROR] Failed to send email to ${to} (HTTP ${response.status}):`, JSON.stringify(data));
       }
     } catch (resendErr: any) {
       console.error(`❌ [RESEND EXCEPTION] Error sending email to ${to}:`, resendErr?.message || resendErr);
