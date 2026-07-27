@@ -48,6 +48,27 @@ export default function RegisterPage() {
   const validCount = passwordRules.filter((r) => r.valid).length;
   const isPasswordStrong = validCount >= 4;
 
+  function formatE164Phone(phone: string): string {
+    let digits = phone.replace(/\D/g, '');
+    if (phone.startsWith('+')) {
+      if (digits.startsWith('9610')) {
+        digits = '961' + digits.slice(4);
+      }
+      return `+${digits}`;
+    }
+    if (digits.startsWith('9610')) {
+      digits = '961' + digits.slice(4);
+      return `+${digits}`;
+    }
+    if (digits.startsWith('961')) {
+      return `+${digits}`;
+    }
+    if (digits.startsWith('0')) {
+      digits = digits.slice(1);
+    }
+    return `+961${digits}`;
+  }
+
   const sendFirebasePhoneSms = async (phone: string) => {
     try {
       let recaptchaVerifier = (window as any).recaptchaVerifier;
@@ -58,12 +79,14 @@ export default function RegisterPage() {
         });
         (window as any).recaptchaVerifier = recaptchaVerifier;
       }
-      const cleanPhone = phone.startsWith('+') ? phone : `+${phone.replace(/\D/g, '')}`;
+      const cleanPhone = formatE164Phone(phone);
+      console.log('📱 Dispatched Firebase SMS to E.164 phone:', cleanPhone);
       const confirmation = await signInWithPhoneNumber(auth, cleanPhone, recaptchaVerifier);
       setConfirmationResult(confirmation);
       toast.success(`SMS OTP sent to ${cleanPhone}`);
     } catch (err: any) {
-      console.warn('Firebase SMS warning:', err?.message || err);
+      console.error('Firebase SMS error:', err);
+      toast.error(`Firebase SMS error: ${err?.message || 'Failed to send SMS'}`);
     }
   };
 
