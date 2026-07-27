@@ -51,6 +51,7 @@ export function Navbar() {
             <select 
               value={currency}
               onChange={(e) => setCurrency(e.target.value as any)}
+              aria-label="Select currency"
               className="bg-transparent text-dark-300 text-sm font-medium focus:outline-none cursor-pointer hover:text-white transition-colors appearance-none"
             >
               {currencies.map(c => (
@@ -61,6 +62,7 @@ export function Navbar() {
             {/* Language Toggle */}
             <button 
               onClick={() => setLanguage(language === 'en' ? 'ar' : 'en')}
+              aria-label="Toggle language"
               className="text-dark-300 hover:text-white text-sm font-medium transition-colors uppercase"
             >
               {language === 'en' ? 'AR' : 'EN'}
@@ -69,6 +71,7 @@ export function Navbar() {
             {/* Cart Toggle */}
             <button 
               onClick={() => setIsCartOpen(true)}
+              aria-label={`Open shopping cart (${itemCount} items)`}
               className="relative p-2 text-dark-300 hover:text-white transition-colors"
             >
               <ShoppingCart className="w-6 h-6" />
@@ -83,7 +86,10 @@ export function Navbar() {
             <div className="hidden md:flex items-center gap-4 border-l border-dark-700 pl-5">
               {isAuthenticated ? (
                 <div className="relative group">
-                  <button className="flex items-center gap-2 text-dark-300 hover:text-white transition-colors">
+                  <button 
+                    aria-label="User account menu"
+                    className="flex items-center gap-2 text-dark-300 hover:text-white transition-colors"
+                  >
                     <User className="w-5 h-5" />
                     <span className="text-sm font-medium">{user?.name}</span>
                   </button>
@@ -113,6 +119,7 @@ export function Navbar() {
             {/* Mobile Menu Toggle */}
             <button 
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+              aria-label={isMobileMenuOpen ? "Close menu" : "Open menu"}
               className="md:hidden p-2 text-dark-300 hover:text-white transition-colors"
             >
               {isMobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}

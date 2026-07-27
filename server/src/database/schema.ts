@@ -400,6 +400,12 @@ export function initializeDatabase(): void {
     CREATE INDEX IF NOT EXISTS idx_reviews_product ON reviews(product_id);
     CREATE INDEX IF NOT EXISTS idx_wishlist_user ON wishlist(user_id);
     CREATE INDEX IF NOT EXISTS idx_database_audit_log_created ON database_audit_log(created_at);
+    CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
+    CREATE INDEX IF NOT EXISTS idx_users_phone ON users(phone_number);
+    CREATE INDEX IF NOT EXISTS idx_users_firebase ON users(firebase_uid);
+    CREATE INDEX IF NOT EXISTS idx_auth_tokens_lookup ON auth_tokens(token, type);
+    CREATE INDEX IF NOT EXISTS idx_user_sessions_token ON user_sessions(session_token);
+    CREATE INDEX IF NOT EXISTS idx_inventory_lookup ON inventory_codes(product_id, is_used);
   `);
 }
 

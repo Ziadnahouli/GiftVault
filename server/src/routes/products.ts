@@ -9,6 +9,7 @@ const router = Router();
 // GET /api/products — List products with filters & pagination
 router.get('/', (req: Request, res: Response) => {
   try {
+    res.setHeader('Cache-Control', 'public, max-age=60, stale-while-revalidate=300');
     const { limit, offset, page } = getPagination(req.query);
     const { category, search, sort, featured, best_seller, region } = req.query as any;
 
