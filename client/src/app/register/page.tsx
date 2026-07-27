@@ -239,34 +239,6 @@ export default function RegisterPage() {
 
           {!verificationStep ? (
             <>
-              {/* Registration Method Tabs */}
-              <div className="flex bg-dark-900/90 p-1 rounded-2xl border border-dark-800 mb-6">
-                <button
-                  type="button"
-                  onClick={() => setRegisterMode('email')}
-                  className={`flex-1 py-2.5 rounded-xl text-xs font-semibold flex items-center justify-center gap-2 transition-all ${
-                    registerMode === 'email'
-                      ? 'bg-primary-600 text-white shadow-glow-sm'
-                      : 'text-dark-400 hover:text-white'
-                  }`}
-                >
-                  <Mail className="w-4 h-4" />
-                  <span>Email Registration</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setRegisterMode('phone')}
-                  className={`flex-1 py-2.5 rounded-xl text-xs font-semibold flex items-center justify-center gap-2 transition-all ${
-                    registerMode === 'phone'
-                      ? 'bg-primary-600 text-white shadow-glow-sm'
-                      : 'text-dark-400 hover:text-white'
-                  }`}
-                >
-                  <Phone className="w-4 h-4" />
-                  <span>Phone Number OTP</span>
-                </button>
-              </div>
-
               <form onSubmit={handleSubmit} className="space-y-4">
                 {/* Full Name */}
                 <div>
@@ -288,50 +260,44 @@ export default function RegisterPage() {
                   </div>
                 </div>
 
-                {/* Email Address Mode */}
-                {registerMode === 'email' && (
-                  <div>
-                    <label className="block text-xs font-semibold text-dark-300 uppercase tracking-wider mb-1">
-                      Email Address *
-                    </label>
-                    <div className="relative">
-                      <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-dark-400">
-                        <Mail className="w-5 h-5" />
-                      </div>
-                      <input
-                        type="email"
-                        value={formData.email}
-                        onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                        required
-                        className="input-field pl-11 py-2.5 text-sm rounded-xl bg-dark-900/80 border-dark-700 focus:border-primary-500 text-white placeholder-dark-500 w-full"
-                        placeholder="you@example.com"
-                      />
+                {/* Email Address */}
+                <div>
+                  <label className="block text-xs font-semibold text-dark-300 uppercase tracking-wider mb-1">
+                    Email Address *
+                  </label>
+                  <div className="relative">
+                    <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-dark-400">
+                      <Mail className="w-5 h-5" />
                     </div>
+                    <input
+                      type="email"
+                      value={formData.email}
+                      onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                      required
+                      className="input-field pl-11 py-2.5 text-sm rounded-xl bg-dark-900/80 border-dark-700 focus:border-primary-500 text-white placeholder-dark-500 w-full"
+                      placeholder="you@example.com"
+                    />
                   </div>
-                )}
+                </div>
 
-                {/* Phone Number Mode */}
-                {registerMode === 'phone' && (
-                  <div>
-                    <label className="block text-xs font-semibold text-dark-300 uppercase tracking-wider mb-1">
-                      Phone Number (E.164 Format) *
-                    </label>
-                    <div className="relative">
-                      <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-dark-400">
-                        <Phone className="w-5 h-5" />
-                      </div>
-                      <input
-                        type="tel"
-                        value={formData.phoneNumber}
-                        onChange={(e) => setFormData({ ...formData, phoneNumber: e.target.value })}
-                        required
-                        className="input-field pl-11 py-2.5 text-sm rounded-xl bg-dark-900/80 border-dark-700 focus:border-primary-500 text-white placeholder-dark-500 w-full"
-                        placeholder="+1234567890"
-                      />
+                {/* Phone Number (Optional) */}
+                <div>
+                  <label className="block text-xs font-semibold text-dark-300 uppercase tracking-wider mb-1">
+                    Phone Number (Optional)
+                  </label>
+                  <div className="relative">
+                    <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-dark-400">
+                      <Phone className="w-5 h-5" />
                     </div>
-                    <p className="text-[11px] text-dark-400 mt-1">Include country code (e.g. +14155552671 or +96103123456)</p>
+                    <input
+                      type="tel"
+                      value={formData.phoneNumber}
+                      onChange={(e) => setFormData({ ...formData, phoneNumber: e.target.value })}
+                      className="input-field pl-11 py-2.5 text-sm rounded-xl bg-dark-900/80 border-dark-700 focus:border-primary-500 text-white placeholder-dark-500 w-full"
+                      placeholder="+961 70 123 456"
+                    />
                   </div>
-                )}
+                </div>
 
                 {/* Password */}
                 <div>
