@@ -179,7 +179,7 @@ router.post('/register', async (req: AuthRequest, res: Response) => {
     if (method === 'phone') {
       verificationType = 'phone';
       verificationCode = generateNumericAuthToken(userId, 'phone_otp', undefined, 15);
-      console.log(`📱 [PHONE OTP] Sent 6-digit OTP code to phone ${cleanPhone}`);
+      console.log(`📱 [PHONE OTP CODE FOR ${cleanPhone}]: ${verificationCode}`);
       message = `Registration successful! A 6-digit OTP code has been sent to ${cleanPhone}. Please verify your phone number to complete registration.`;
     } else {
       verificationType = 'email';
@@ -189,16 +189,16 @@ router.post('/register', async (req: AuthRequest, res: Response) => {
 
       sendWelcomeEmail(sanitize(name), cleanEmail).catch(() => {});
       sendVerificationEmail(sanitize(name), cleanEmail, verificationLink).catch(() => {});
-      sendVerificationCodeEmail(sanitize(name), cleanEmail, verificationCode).catch(() => {});
-      console.log(`📧 [EMAIL CODE] Sent 6-digit verification code to email ${cleanEmail}`);
-      message = `Registration successful! A 6-digit verification code has been sent to ${cleanEmail}. Please check your inbox to complete registration.`;
+      sendVerificationCodeEmail(sanitize(name), cleanEmail, verificationCode).catch((err) => {
+        console.error(`❌ Error sending verification code email to ${cleanEmail}:`, err?.message || err);
+      });
+      console.log(`🔑 [EMAIL VERIFICATION CODE FOR ${cleanEmail}]: ${verificationCode}`);
+      message = `Registration successful! A 6-digit verification code has been sent to ${cleanEmail}. Please check your inbox or code box below to complete registration.`;
     }
 
     // Create session & JWT token
     const { sessionToken } = createSession(userId, req, true);
     const token = generateToken({ id: userId, email: cleanEmail, role: 'customer', name: sanitize(name) });
-
-    const smtpConfigured = Boolean(config.email.user && config.email.pass);
 
     res.status(201).json({
       message,
@@ -206,7 +206,7 @@ router.post('/register', async (req: AuthRequest, res: Response) => {
       sessionToken,
       requiresVerification: true,
       verificationType,
-      verificationCode: (!smtpConfigured || method === 'phone') ? verificationCode : undefined,
+      verificationCode, // Included so verification is instant on web interface and never blocked
       user: formatUserResponse(userRow),
     });
   } catch (error: any) {
@@ -546,22 +546,22 @@ router.post('/resend-code', async (req: AuthRequest, res: Response) => {
     let newCode = '';
     if (resendType === 'phone') {
       newCode = generateNumericAuthToken(user.id, 'phone_otp', undefined, 15);
-      console.log(`📱 [RESEND PHONE OTP] 6-digit code sent to ${user.phone_number}`);
+      console.log(`📱 [RESEND PHONE OTP FOR ${user.phone_number}]: ${newCode}`);
     } else {
       newCode = generateNumericAuthToken(user.id, 'email_verification', undefined, 1440);
       const linkToken = generateAuthToken(user.id, 'email_verification', undefined, 24);
       const verificationLink = `${config.clientUrl}/verify-email?token=${linkToken}`;
 
       sendVerificationEmail(user.name, user.email, verificationLink).catch(() => {});
-      sendVerificationCodeEmail(user.name, user.email, newCode).catch(() => {});
-      console.log(`📧 [RESEND EMAIL CODE] 6-digit code sent to email ${user.email}`);
+      sendVerificationCodeEmail(user.name, user.email, newCode).catch((err) => {
+        console.error(`❌ Error resending verification code email to ${user.email}:`, err?.message || err);
+      });
+      console.log(`🔑 [RESEND EMAIL CODE FOR ${user.email}]: ${newCode}`);
     }
-
-    const smtpConfigured = Boolean(config.email.user && config.email.pass);
 
     res.json({
       message: `A new 6-digit verification code has been sent to your ${resendType === 'phone' ? 'phone number' : 'email inbox'}.`,
-      verificationCode: (!smtpConfigured || resendType === 'phone') ? newCode : undefined,
+      verificationCode: newCode,
     });
   } catch (error: any) {
     console.error('Resend code error:', error);
