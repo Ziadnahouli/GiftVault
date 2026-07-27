@@ -1,25 +1,24 @@
 FROM node:20-slim
 
-WORKDIR /app
+WORKDIR /app/server
 
-# Copy root and server package files
-COPY package.json ./
-COPY server/package.json ./server/
+# Copy server package files
+COPY package.json ../package.json
+COPY server/package.json ./
 
 # Install server dependencies
-RUN cd server && npm install
+RUN npm install
 
 # Copy application source code
-COPY server ./server
+COPY server ./
 
 # Build TypeScript code
-RUN cd server && npm run build
+RUN npm run build
 
 # Expose HTTP port
 EXPOSE 5000
 
-# Set default NODE_ENV
 ENV NODE_ENV=production
 
-# Launch Node.js server
-CMD ["node", "server/dist/index.js"]
+# Launch Node.js server from server directory
+CMD ["node", "dist/index.js"]
