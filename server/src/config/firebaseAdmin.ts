@@ -5,6 +5,12 @@ let firebaseApp: admin.app.App | null = null;
 let isInitialized = false;
 
 try {
+  let privateKey = config.firebase.privateKey || '';
+  if (privateKey.startsWith('"') && privateKey.endsWith('"')) {
+    privateKey = privateKey.slice(1, -1);
+  }
+  privateKey = privateKey.replace(/\\n/g, '\n');
+
   if (!admin.apps.length) {
     if (config.firebase.serviceAccount) {
       const serviceAccount = JSON.parse(config.firebase.serviceAccount);
@@ -12,12 +18,12 @@ try {
         credential: admin.credential.cert(serviceAccount),
       });
       isInitialized = true;
-    } else if (config.firebase.clientEmail && config.firebase.privateKey) {
+    } else if (config.firebase.clientEmail && privateKey) {
       firebaseApp = admin.initializeApp({
         credential: admin.credential.cert({
           projectId: config.firebase.projectId,
           clientEmail: config.firebase.clientEmail,
-          privateKey: config.firebase.privateKey,
+          privateKey: privateKey,
         }),
       });
       isInitialized = true;
