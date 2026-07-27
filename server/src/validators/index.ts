@@ -2,11 +2,15 @@ import { z } from 'zod';
 
 export const registerSchema = z.object({
   name: z.string().min(2, 'Name must be at least 2 characters').max(100),
-  email: z.string().email('Invalid email address').max(255),
+  email: z.string().email('Invalid email address').max(255).optional().or(z.literal('')),
   phoneNumber: z.string().regex(/^\+?[1-9]\d{7,14}$/, 'Invalid international phone number (E.164 format e.g. +1234567890)').optional().or(z.literal('')),
   password: z.string().min(8, 'Password must be at least 8 characters long'),
   country: z.string().max(100).optional(),
   whatsapp: z.string().max(20).optional(),
+  registrationMethod: z.enum(['email', 'phone']).optional(),
+}).refine((data) => Boolean((data.email && data.email.trim()) || (data.phoneNumber && data.phoneNumber.trim())), {
+  message: 'Either Email Address or Phone Number is required to register',
+  path: ['email'],
 });
 
 export const loginSchema = z.object({

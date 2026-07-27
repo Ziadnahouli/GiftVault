@@ -120,7 +120,7 @@ export function getUserSessions(userId: number): UserSession[] {
   `).all(userId) as UserSession[];
 }
 
-export function generateAuthToken(userId: number, type: 'email_verification' | 'password_reset' | 'email_change' | 'phone_change', newValue?: string, expiresInHours = 24): string {
+export function generateAuthToken(userId: number, type: 'email_verification' | 'phone_otp' | 'password_reset' | 'email_change' | 'phone_change', newValue?: string, expiresInHours = 24): string {
   const token = crypto.randomBytes(32).toString('hex');
   const expiresAt = new Date(Date.now() + expiresInHours * 60 * 60 * 1000).toISOString();
 
@@ -135,11 +135,35 @@ export function generateAuthToken(userId: number, type: 'email_verification' | '
   return token;
 }
 
-export function verifyAuthToken(token: string, type: 'email_verification' | 'password_reset' | 'email_change' | 'phone_change'): { id: number; user_id: number; new_value?: string } | null {
-  const record = db.prepare(`
-    SELECT * FROM auth_tokens WHERE token = ? AND type = ? AND expires_at > CURRENT_TIMESTAMP
-  `).get(token, type) as any;
+export function generateNumericAuthToken(
+  userId: number,
+  type: 'email_verification' | 'phone_otp' | 'password_reset' | 'email_change' | 'phone_change',
+  newValue?: string,
+  expiresInMinutes = 15
+): string {
+  const code = Math.floor(100000 + Math.random() * 900000).toString();
+  const expiresAt = new Date(Date.now() + expiresInMinutes * 60 * 1000).toISOString();
 
+  // Invalidate previous tokens of same type for user
+  db.prepare(`DELETE FROM auth_tokens WHERE user_id = ? AND type = ?`).run(userId, type);
+
+  db.prepare(`
+    INSERT INTO auth_tokens (user_id, token, type, new_value, expires_at)
+    VALUES (?, ?, ?, ?, ?)
+  `).run(userId, code, type, newValue || null, expiresAt);
+
+  return code;
+}
+
+export function verifyAuthToken(token: string, type?: 'email_verification' | 'phone_otp' | 'password_reset' | 'email_change' | 'phone_change'): { id: number; user_id: number; new_value?: string; type: string } | null {
+  let query = 'SELECT * FROM auth_tokens WHERE token = ? AND expires_at > CURRENT_TIMESTAMP';
+  const params: any[] = [token];
+  if (type) {
+    query += ' AND type = ?';
+    params.push(type);
+  }
+
+  const record = db.prepare(query).get(...params) as any;
   return record || null;
 }
 

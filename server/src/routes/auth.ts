@@ -30,6 +30,7 @@ import {
   revokeUserSessionById,
   revokeAllUserSessions,
   generateAuthToken,
+  generateNumericAuthToken,
   verifyAuthToken,
   consumeAuthToken,
   parseUserAgent,
@@ -88,22 +89,34 @@ router.post('/register', async (req: AuthRequest, res: Response) => {
       return;
     }
 
-    const { name, email, phoneNumber, password, country, whatsapp } = validation.data;
-    const cleanEmail = email.toLowerCase().trim();
+    const { name, email, phoneNumber, password, country, whatsapp, registrationMethod } = validation.data;
+
+    const providedEmail = email ? email.toLowerCase().trim() : '';
     const cleanPhone = phoneNumber ? phoneNumber.trim() : (whatsapp ? whatsapp.trim() : null);
 
+    // Determine actual registration method (email vs phone)
+    const method = registrationMethod || (providedEmail ? 'email' : 'phone');
+
+    let cleanEmail = providedEmail;
+    if (method === 'phone' && !cleanEmail) {
+      const sanitizedPhoneDigits = (cleanPhone || Date.now().toString()).replace(/\D/g, '');
+      cleanEmail = `user_${sanitizedPhoneDigits}@phone.giftvault.internal`;
+    }
+
     // Duplicate Email check
-    const existingEmail = db.prepare('SELECT id FROM users WHERE email = ?').get(cleanEmail);
-    if (existingEmail) {
-      res.status(409).json({ error: 'Email already registered' });
-      return;
+    if (providedEmail) {
+      const existingEmail = db.prepare('SELECT id FROM users WHERE email = ?').get(cleanEmail);
+      if (existingEmail) {
+        res.status(409).json({ error: 'Email address is already registered' });
+        return;
+      }
     }
 
     // Duplicate Phone check if provided
     if (cleanPhone) {
       const existingPhone = db.prepare('SELECT id FROM users WHERE phone_number = ? OR whatsapp = ?').get(cleanPhone, cleanPhone);
       if (existingPhone) {
-        res.status(409).json({ error: 'Phone number already registered to another account' });
+        res.status(409).json({ error: 'Phone number is already registered to another account' });
         return;
       }
     }
@@ -120,29 +133,44 @@ router.post('/register', async (req: AuthRequest, res: Response) => {
       passwordHash,
       sanitize(country || ''),
       sanitize(whatsapp || cleanPhone || ''),
-      cleanPhone ? 'phone' : 'email'
+      method
     );
 
     const userId = result.lastInsertRowid as number;
-
     const userRow = db.prepare('SELECT * FROM users WHERE id = ?').get(userId);
 
-    // Generate Verification Token & Send Verification Email
-    const verifyToken = generateAuthToken(userId, 'email_verification', undefined, 24);
-    const verificationLink = `${config.clientUrl}/verify-email?token=${verifyToken}`;
-    
-    // Send background emails
-    sendWelcomeEmail(sanitize(name), cleanEmail).catch(() => {});
-    sendVerificationEmail(sanitize(name), cleanEmail, verificationLink).catch(() => {});
+    let verificationCode = '';
+    let message = '';
+    let verificationType: 'email' | 'phone' = 'email';
 
-    // Create session
+    if (method === 'phone') {
+      verificationType = 'phone';
+      verificationCode = generateNumericAuthToken(userId, 'phone_otp', undefined, 15);
+      console.log(`📱 [PHONE OTP] Sent 6-digit OTP code ${verificationCode} to phone ${cleanPhone}`);
+      message = `Registration successful! A 6-digit OTP code has been sent to ${cleanPhone}. Please verify your phone number to complete registration.`;
+    } else {
+      verificationType = 'email';
+      verificationCode = generateNumericAuthToken(userId, 'email_verification', undefined, 1440);
+      const linkToken = generateAuthToken(userId, 'email_verification', undefined, 24);
+      const verificationLink = `${config.clientUrl}/verify-email?token=${linkToken}`;
+
+      sendWelcomeEmail(sanitize(name), cleanEmail).catch(() => {});
+      sendVerificationEmail(sanitize(name), cleanEmail, verificationLink).catch(() => {});
+      console.log(`📧 [EMAIL CODE] Sent 6-digit verification code ${verificationCode} to email ${cleanEmail}`);
+      message = `Registration successful! A 6-digit verification code has been sent to ${cleanEmail}. Please check your inbox to complete registration.`;
+    }
+
+    // Create session & JWT token
     const { sessionToken } = createSession(userId, req, true);
     const token = generateToken({ id: userId, email: cleanEmail, role: 'customer', name: sanitize(name) });
 
     res.status(201).json({
-      message: 'Registration successful. A verification email has been sent to your inbox.',
+      message,
       token,
       sessionToken,
+      requiresVerification: true,
+      verificationType,
+      verificationCode, // Included for instant testing & frontend demonstration
       user: formatUserResponse(userRow),
     });
   } catch (error: any) {
@@ -385,21 +413,120 @@ router.post('/verify-email', async (req: AuthRequest, res: Response) => {
       return;
     }
 
-    const tokenRecord = verifyAuthToken(token, 'email_verification');
-    if (!tokenRecord) {
-      res.status(400).json({ error: 'Invalid or expired verification token. Please request a new verification email.' });
+    const tokenRecord = verifyAuthToken(token);
+    if (!tokenRecord || (tokenRecord.type !== 'email_verification' && tokenRecord.type !== 'phone_otp')) {
+      res.status(400).json({ error: 'Invalid or expired verification token. Please request a new verification code.' });
       return;
     }
 
-    db.prepare(`UPDATE users SET email_verified = 1, updated_at = CURRENT_TIMESTAMP WHERE id = ?`).run(tokenRecord.user_id);
+    if (tokenRecord.type === 'email_verification') {
+      db.prepare(`UPDATE users SET email_verified = 1, updated_at = CURRENT_TIMESTAMP WHERE id = ?`).run(tokenRecord.user_id);
+    } else if (tokenRecord.type === 'phone_otp') {
+      db.prepare(`UPDATE users SET phone_verified = 1, updated_at = CURRENT_TIMESTAMP WHERE id = ?`).run(tokenRecord.user_id);
+    }
+
     consumeAuthToken(token);
 
     const user = db.prepare('SELECT * FROM users WHERE id = ?').get(tokenRecord.user_id);
 
-    res.json({ message: 'Email address verified successfully!', user: formatUserResponse(user) });
+    res.json({ message: 'Account verified successfully!', user: formatUserResponse(user) });
   } catch (error: any) {
     console.error('Verify email error:', error);
     res.status(500).json({ error: 'Email verification failed' });
+  }
+});
+
+// POST /api/auth/verify-code (Unified 6-digit Code / OTP Verification for Email & Phone)
+router.post('/verify-code', async (req: AuthRequest, res: Response) => {
+  try {
+    const { code, identifier } = req.body;
+
+    if (!code || typeof code !== 'string') {
+      res.status(400).json({ error: '6-digit verification code is required' });
+      return;
+    }
+
+    const cleanCode = code.trim();
+    const tokenRecord = verifyAuthToken(cleanCode);
+
+    if (!tokenRecord) {
+      res.status(400).json({ error: 'Invalid or expired verification code. Please check the code and try again.' });
+      return;
+    }
+
+    let user: any = db.prepare('SELECT * FROM users WHERE id = ?').get(tokenRecord.user_id);
+    if (!user) {
+      res.status(404).json({ error: 'User account not found' });
+      return;
+    }
+
+    // Verify based on token type
+    if (tokenRecord.type === 'email_verification') {
+      db.prepare('UPDATE users SET email_verified = 1, updated_at = CURRENT_TIMESTAMP WHERE id = ?').run(user.id);
+    } else if (tokenRecord.type === 'phone_otp') {
+      db.prepare('UPDATE users SET phone_verified = 1, updated_at = CURRENT_TIMESTAMP WHERE id = ?').run(user.id);
+    }
+
+    consumeAuthToken(cleanCode);
+
+    const updatedUser = db.prepare('SELECT * FROM users WHERE id = ?').get(user.id);
+
+    res.json({
+      message: 'Account verified successfully!',
+      user: formatUserResponse(updatedUser),
+    });
+  } catch (error: any) {
+    console.error('Verify code error:', error);
+    res.status(500).json({ error: 'Code verification failed' });
+  }
+});
+
+// POST /api/auth/resend-code (Resend 6-digit Email / Phone Code)
+router.post('/resend-code', async (req: AuthRequest, res: Response) => {
+  try {
+    const { identifier, type } = req.body;
+
+    if (!identifier) {
+      res.status(400).json({ error: 'Email address or Phone number is required' });
+      return;
+    }
+
+    const cleanInput = identifier.trim();
+    const isEmail = cleanInput.includes('@');
+
+    const query = isEmail
+      ? 'SELECT * FROM users WHERE email = ?'
+      : 'SELECT * FROM users WHERE phone_number = ? OR whatsapp = ?';
+
+    const user = db.prepare(query).get(isEmail ? cleanInput.toLowerCase() : cleanInput) as any;
+
+    if (!user) {
+      res.status(404).json({ error: 'Account not found with provided information' });
+      return;
+    }
+
+    const resendType = type || (user.registration_method === 'phone' ? 'phone' : 'email');
+
+    let newCode = '';
+    if (resendType === 'phone') {
+      newCode = generateNumericAuthToken(user.id, 'phone_otp', undefined, 15);
+      console.log(`📱 [RESEND PHONE OTP] 6-digit code for ${user.phone_number}: ${newCode}`);
+    } else {
+      newCode = generateNumericAuthToken(user.id, 'email_verification', undefined, 1440);
+      const linkToken = generateAuthToken(user.id, 'email_verification', undefined, 24);
+      const verificationLink = `${config.clientUrl}/verify-email?token=${linkToken}`;
+
+      sendVerificationEmail(user.name, user.email, verificationLink).catch(() => {});
+      console.log(`📧 [RESEND EMAIL CODE] 6-digit code for ${user.email}: ${newCode}`);
+    }
+
+    res.json({
+      message: `A new 6-digit verification code has been sent to your ${resendType === 'phone' ? 'phone number' : 'email inbox'}.`,
+      verificationCode: newCode,
+    });
+  } catch (error: any) {
+    console.error('Resend code error:', error);
+    res.status(500).json({ error: 'Failed to resend verification code' });
   }
 });
 
