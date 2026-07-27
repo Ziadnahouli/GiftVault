@@ -3,10 +3,12 @@
  * Dispatches 6-digit OTP codes directly to mobile phone handsets via SMS / WhatsApp APIs.
  */
 
+const VONAGE_API_KEY = process.env.VONAGE_API_KEY || '';
+const VONAGE_API_SECRET = process.env.VONAGE_API_SECRET || '';
+const GREEN_API_INSTANCE_ID = process.env.GREEN_API_INSTANCE_ID || '';
+const GREEN_API_TOKEN = process.env.GREEN_API_TOKEN || '';
 const CALLMEBOT_API_KEY = process.env.CALLMEBOT_API_KEY || '';
 const TEXTBELT_API_KEY = process.env.TEXTBELT_API_KEY || 'textbelt';
-const ULTRAMSG_INSTANCE_ID = process.env.ULTRAMSG_INSTANCE_ID || '';
-const ULTRAMSG_TOKEN = process.env.ULTRAMSG_TOKEN || '';
 
 export async function sendPhoneOTP(phoneNumber: string, code: string): Promise<boolean> {
   const cleanPhone = phoneNumber.startsWith('+') ? phoneNumber : `+${phoneNumber.replace(/\D/g, '')}`;
@@ -14,7 +16,54 @@ export async function sendPhoneOTP(phoneNumber: string, code: string): Promise<b
 
   console.log(`📱 [PHONE OTP CODE FOR ${cleanPhone}]: ${code}`);
 
-  // 1. Callmebot Free WhatsApp API (100% Free WhatsApp Delivery)
+  // 1. Vonage (Nexmo) SMS API Dispatch (Free $2.00 trial credit)
+  if (VONAGE_API_KEY && VONAGE_API_SECRET) {
+    try {
+      const response = await fetch('https://rest.nexmo.com/sms/json', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          api_key: VONAGE_API_KEY,
+          api_secret: VONAGE_API_SECRET,
+          from: 'GiftVault',
+          to: cleanPhone.replace('+', ''),
+          text: messageBody,
+        }),
+      });
+      const data = await response.json() as any;
+      if (response.ok && data?.messages?.[0]?.status === '0') {
+        console.log(`📱 [VONAGE SMS SUCCESS] Dispatched SMS OTP to ${cleanPhone}`);
+        return true;
+      } else {
+        console.error(`❌ [VONAGE SMS ERROR] Failed to send SMS to ${cleanPhone}:`, JSON.stringify(data));
+      }
+    } catch (err: any) {
+      console.error(`❌ [VONAGE SMS EXCEPTION] Error sending SMS to ${cleanPhone}:`, err?.message || err);
+    }
+  }
+
+  // 2. Green API Free WhatsApp Dispatch
+  if (GREEN_API_INSTANCE_ID && GREEN_API_TOKEN) {
+    try {
+      const response = await fetch(`https://api.green-api.com/waInstance${GREEN_API_INSTANCE_ID}/sendMessage/${GREEN_API_TOKEN}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          chatId: `${cleanPhone.replace('+', '')}@c.us`,
+          message: messageBody,
+        }),
+      });
+      const data = await response.json() as any;
+      if (response.ok && data?.idMessage) {
+        console.log(`📱 [GREEN API WHATSAPP SUCCESS] Dispatched WhatsApp OTP to ${cleanPhone}`);
+        return true;
+      }
+    } catch (err: any) {
+      console.error(`❌ [GREEN API EXCEPTION] Error sending WhatsApp to ${cleanPhone}:`, err?.message || err);
+    }
+  }
+
+  // 3. Callmebot Free WhatsApp API Fallback
   if (CALLMEBOT_API_KEY) {
     try {
       const callmebotUrl = `https://api.callmebot.com/whatsapp.php?phone=${encodeURIComponent(cleanPhone)}&text=${encodeURIComponent(messageBody)}&apikey=${encodeURIComponent(CALLMEBOT_API_KEY)}`;
@@ -28,29 +77,7 @@ export async function sendPhoneOTP(phoneNumber: string, code: string): Promise<b
     }
   }
 
-  // 2. UltraMsg WhatsApp API Dispatch
-  if (ULTRAMSG_INSTANCE_ID && ULTRAMSG_TOKEN) {
-    try {
-      const response = await fetch(`https://api.ultramsg.com/${ULTRAMSG_INSTANCE_ID}/messages/chat`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: new URLSearchParams({
-          token: ULTRAMSG_TOKEN,
-          to: cleanPhone,
-          body: messageBody,
-        }).toString(),
-      });
-      const data = await response.json() as any;
-      if (response.ok && data?.sent === 'true') {
-        console.log(`📱 [WHATSAPP SUCCESS] Dispatched OTP to ${cleanPhone}`);
-        return true;
-      }
-    } catch (err: any) {
-      console.error(`❌ [WHATSAPP EXCEPTION] Error sending WhatsApp to ${cleanPhone}:`, err?.message || err);
-    }
-  }
-
-  // 3. Textbelt Free/Paid SMS API Dispatch
+  // 4. Textbelt Free/Paid SMS API Dispatch Fallback
   try {
     const response = await fetch('https://textbelt.com/text', {
       method: 'POST',
@@ -65,8 +92,6 @@ export async function sendPhoneOTP(phoneNumber: string, code: string): Promise<b
     if (data.success) {
       console.log(`📱 [TEXTBELT SMS SUCCESS] Dispatched SMS to ${cleanPhone} (Quota remaining: ${data.quotaRemaining})`);
       return true;
-    } else {
-      console.log(`ℹ️ [TEXTBELT SMS INFO] ${data.error || 'Textbelt free daily quota reached'}.`);
     }
   } catch (err: any) {
     console.error(`❌ [TEXTBELT EXCEPTION] Error sending SMS to ${cleanPhone}:`, err?.message || err);
