@@ -186,9 +186,11 @@ async function sendMail(to: string, subject: string, html: string): Promise<bool
         return true;
       } else {
         console.error(`❌ [RESEND API ERROR] Failed to send email to ${to} (HTTP ${response.status}):`, JSON.stringify(data));
+        return false;
       }
     } catch (resendErr: any) {
       console.error(`❌ [RESEND EXCEPTION] Error sending email to ${to}:`, resendErr?.message || resendErr);
+      return false;
     }
   }
 
