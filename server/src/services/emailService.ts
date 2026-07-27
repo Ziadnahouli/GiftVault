@@ -160,6 +160,40 @@ async function sendMail(to: string, subject: string, html: string): Promise<bool
     return true;
   }
 
+  // 1. Resend HTTP API Support (Uses HTTPS Port 443 - Never blocked by Railway)
+  if (process.env.RESEND_API_KEY) {
+    try {
+      const fromHeader = (config.email.from && !config.email.from.includes('noreply@giftvault.com'))
+        ? config.email.from
+        : 'GiftVault <onboarding@resend.dev>';
+
+      const response = await fetch('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${process.env.RESEND_API_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          from: fromHeader,
+          to: [to],
+          subject,
+          html,
+        }),
+      });
+
+      if (response.ok) {
+        console.log(`✉️ [RESEND HTTP API] Successfully sent email to ${to}`);
+        return true;
+      } else {
+        const errText = await response.text();
+        console.error(`❌ [RESEND HTTP API] Error sending email to ${to}:`, errText);
+      }
+    } catch (resendErr: any) {
+      console.error(`❌ [RESEND HTTP API] Connection error:`, resendErr.message);
+    }
+  }
+
+  // 2. Nodemailer SMTP Transport
   if (transporter) {
     try {
       const fromHeader = (config.email.from && !config.email.from.includes('noreply@giftvault.com'))

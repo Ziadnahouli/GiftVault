@@ -206,7 +206,6 @@ router.post('/register', async (req: AuthRequest, res: Response) => {
       sessionToken,
       requiresVerification: true,
       verificationType,
-      verificationCode, // Included so verification is instant on web interface and never blocked
       user: formatUserResponse(userRow),
     });
   } catch (error: any) {
@@ -561,7 +560,6 @@ router.post('/resend-code', async (req: AuthRequest, res: Response) => {
 
     res.json({
       message: `A new 6-digit verification code has been sent to your ${resendType === 'phone' ? 'phone number' : 'email inbox'}.`,
-      verificationCode: newCode,
     });
   } catch (error: any) {
     console.error('Resend code error:', error);
