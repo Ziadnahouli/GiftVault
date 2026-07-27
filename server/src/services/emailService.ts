@@ -165,6 +165,10 @@ async function sendMail(to: string, subject: string, html: string): Promise<bool
   // 1. Primary Email Engine: Resend REST API (HTTPS Port 443 - Never blocked by Railway)
   if (RESEND_API_KEY) {
     try {
+      const fromAddress = (config.email.from && !config.email.from.includes('noreply@giftvault.com'))
+        ? config.email.from
+        : (process.env.EMAIL_FROM || 'onboarding@resend.dev');
+
       const response = await fetch('https://api.resend.com/emails', {
         method: 'POST',
         headers: {
@@ -172,7 +176,7 @@ async function sendMail(to: string, subject: string, html: string): Promise<bool
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          from: 'onboarding@resend.dev',
+          from: fromAddress,
           to: [to],
           subject,
           html,
