@@ -114,9 +114,13 @@ router.post('/register', async (req: AuthRequest, res: Response) => {
 
     // Duplicate Email check
     if (cleanEmail) {
-      const existingEmail = db.prepare('SELECT id FROM users WHERE email = ?').get(cleanEmail);
+      const existingEmail = db.prepare('SELECT id, name, email FROM users WHERE email = ?').get(cleanEmail) as any;
       if (existingEmail) {
-        res.status(409).json({ error: method === 'phone' ? 'This phone number is already registered' : 'Email address is already registered' });
+        res.status(409).json({
+          error: method === 'phone'
+            ? `Phone number ${cleanPhone || ''} is already registered to user "${existingEmail.name}". Please log in instead.`
+            : `Email address "${cleanEmail}" is already registered to user "${existingEmail.name}". Please log in instead.`
+        });
         return;
       }
     }
@@ -124,33 +128,47 @@ router.post('/register', async (req: AuthRequest, res: Response) => {
     // Duplicate Phone check if provided
     if (cleanPhone && phoneDigits) {
       const existingPhone = db.prepare(`
-        SELECT id FROM users 
+        SELECT id, name, phone_number, whatsapp FROM users 
         WHERE phone_number = ? 
            OR whatsapp = ? 
            OR REPLACE(REPLACE(REPLACE(REPLACE(phone_number, ' ', ''), '-', ''), '+', ''), '(', '') = ?
-      `).get(cleanPhone, cleanPhone, phoneDigits);
+           OR REPLACE(REPLACE(REPLACE(REPLACE(whatsapp, ' ', ''), '-', ''), '+', ''), '(', '') = ?
+      `).get(cleanPhone, cleanPhone, phoneDigits, phoneDigits) as any;
+
       if (existingPhone) {
-        res.status(409).json({ error: 'Phone number is already registered to another account' });
+        res.status(409).json({
+          error: `Phone number ${cleanPhone} is already registered to user "${existingPhone.name}". Please log in or use a different phone number.`
+        });
         return;
       }
     }
 
     const passwordHash = bcrypt.hashSync(password, 12);
 
-    const result = db.prepare(`
-      INSERT INTO users (name, email, phone_number, password_hash, country, whatsapp, registration_method, email_verified, phone_verified)
-      VALUES (?, ?, ?, ?, ?, ?, ?, 0, 0)
-    `).run(
-      sanitize(name),
-      cleanEmail,
-      cleanPhone,
-      passwordHash,
-      sanitize(country || ''),
-      sanitize(whatsapp || cleanPhone || ''),
-      method
-    );
-
-    const userId = result.lastInsertRowid as number;
+    let userId: number;
+    try {
+      const result = db.prepare(`
+        INSERT INTO users (name, email, phone_number, password_hash, country, whatsapp, registration_method, email_verified, phone_verified)
+        VALUES (?, ?, ?, ?, ?, ?, ?, 0, 0)
+      `).run(
+        sanitize(name),
+        cleanEmail,
+        cleanPhone,
+        passwordHash,
+        sanitize(country || ''),
+        sanitize(whatsapp || cleanPhone || ''),
+        method
+      );
+      userId = result.lastInsertRowid as number;
+    } catch (dbErr: any) {
+      if (dbErr?.message?.includes('UNIQUE constraint failed') || dbErr?.code === 'SQLITE_CONSTRAINT_UNIQUE') {
+        res.status(409).json({
+          error: 'An account with this Phone Number or Email already exists. Please log in instead.'
+        });
+        return;
+      }
+      throw dbErr;
+    }
     const userRow = db.prepare('SELECT * FROM users WHERE id = ?').get(userId);
 
     let verificationCode = '';
