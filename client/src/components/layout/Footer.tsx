@@ -22,20 +22,20 @@ export function Footer() {
               </div>
               <span className="text-xl font-bold gradient-text tracking-tight">GiftVault</span>
             </Link>
-            <p className="text-dark-400 text-sm leading-relaxed">
+            <p className="text-dark-300 text-sm leading-relaxed">
               {t('footer.about')}
             </p>
             <div className="flex gap-4">
-              <a href="#" className="w-10 h-10 rounded-full bg-dark-900 flex items-center justify-center text-dark-400 hover:text-primary-400 hover:bg-dark-800 transition-colors">
+              <a href="#" aria-label="Share GiftVault" className="w-10 h-10 rounded-full bg-dark-900 flex items-center justify-center text-dark-300 hover:text-primary-400 hover:bg-dark-800 transition-colors">
                 <Share2 className="w-5 h-5" />
               </a>
-              <a href="#" className="w-10 h-10 rounded-full bg-dark-900 flex items-center justify-center text-dark-400 hover:text-primary-400 hover:bg-dark-800 transition-colors">
+              <a href="#" aria-label="GiftVault Community Chat" className="w-10 h-10 rounded-full bg-dark-900 flex items-center justify-center text-dark-400 hover:text-primary-400 hover:bg-dark-800 transition-colors">
                 <MessageCircle className="w-5 h-5" />
               </a>
-              <a href="#" className="w-10 h-10 rounded-full bg-dark-900 flex items-center justify-center text-dark-400 hover:text-primary-400 hover:bg-dark-800 transition-colors">
+              <a href="#" aria-label="Email Support" className="w-10 h-10 rounded-full bg-dark-900 flex items-center justify-center text-dark-300 hover:text-primary-400 hover:bg-dark-800 transition-colors">
                 <Mail className="w-5 h-5" />
               </a>
-              <a href="#" className="w-10 h-10 rounded-full bg-dark-900 flex items-center justify-center text-dark-400 hover:text-primary-400 hover:bg-dark-800 transition-colors">
+              <a href="#" aria-label="GiftVault Global Site" className="w-10 h-10 rounded-full bg-dark-900 flex items-center justify-center text-dark-300 hover:text-primary-400 hover:bg-dark-800 transition-colors">
                 <Globe className="w-5 h-5" />
               </a>
             </div>
@@ -45,9 +45,9 @@ export function Footer() {
           <div>
             <h3 className="text-white font-semibold mb-6">{t('footer.quick_links')}</h3>
             <ul className="space-y-4">
-              <li><Link href="/" className="text-dark-400 hover:text-primary-400 text-sm transition-colors">{t('common.home')}</Link></li>
-              <li><Link href="/shop" className="text-dark-400 hover:text-primary-400 text-sm transition-colors">{t('common.shop')}</Link></li>
-              <li><Link href="/about" className="text-dark-400 hover:text-primary-400 text-sm transition-colors">About Us</Link></li>
+              <li><Link href="/" className="text-dark-300 hover:text-primary-400 text-sm transition-colors">{t('common.home')}</Link></li>
+              <li><Link href="/shop" className="text-dark-300 hover:text-primary-400 text-sm transition-colors">{t('common.shop')}</Link></li>
+              <li><Link href="/about" className="text-dark-300 hover:text-primary-400 text-sm transition-colors">About Us</Link></li>
             </ul>
           </div>
 
@@ -55,33 +55,33 @@ export function Footer() {
           <div>
             <h3 className="text-white font-semibold mb-6">{t('footer.support')}</h3>
             <ul className="space-y-4">
-              <li><Link href="/support" className="text-dark-400 hover:text-primary-400 text-sm transition-colors">{t('footer.faq')}</Link></li>
-              <li><Link href="/support" className="text-dark-400 hover:text-primary-400 text-sm transition-colors">{t('footer.contact')}</Link></li>
-              <li><Link href="/support" className="text-dark-400 hover:text-primary-400 text-sm transition-colors">{t('footer.terms')}</Link></li>
-              <li><Link href="/support" className="text-dark-400 hover:text-primary-400 text-sm transition-colors">{t('footer.privacy')}</Link></li>
+              <li><Link href="/support#faq" className="text-dark-300 hover:text-primary-400 text-sm transition-colors">{t('footer.faq')}</Link></li>
+              <li><Link href="/support#contact" className="text-dark-300 hover:text-primary-400 text-sm transition-colors">{t('footer.contact')}</Link></li>
+              <li><Link href="/support#terms" className="text-dark-300 hover:text-primary-400 text-sm transition-colors">{t('footer.terms')}</Link></li>
+              <li><Link href="/support#privacy" className="text-dark-300 hover:text-primary-400 text-sm transition-colors">{t('footer.privacy')}</Link></li>
             </ul>
           </div>
 
           {/* Payment Methods */}
           <div>
             <h3 className="text-white font-semibold mb-6">Payment Options</h3>
-            <p className="text-dark-400 text-sm mb-4">
+            <p className="text-dark-300 text-sm mb-4">
               We process secure payments via WhatsApp with multiple regional options available.
             </p>
             {/* Payment Icons Placeholder */}
             <div className="flex flex-wrap gap-3">
-              <div className="px-3 py-1.5 bg-dark-900 rounded border border-dark-800 text-xs text-dark-300 font-medium tracking-wide">VISA</div>
-              <div className="px-3 py-1.5 bg-dark-900 rounded border border-dark-800 text-xs text-dark-300 font-medium tracking-wide">MASTERCARD</div>
-              <div className="px-3 py-1.5 bg-dark-900 rounded border border-dark-800 text-xs text-dark-300 font-medium tracking-wide">CRYPTO</div>
+              <div className="px-3 py-1.5 bg-dark-900 rounded border border-dark-800 text-xs text-dark-200 font-medium tracking-wide">VISA</div>
+              <div className="px-3 py-1.5 bg-dark-900 rounded border border-dark-800 text-xs text-dark-200 font-medium tracking-wide">MASTERCARD</div>
+              <div className="px-3 py-1.5 bg-dark-900 rounded border border-dark-800 text-xs text-dark-200 font-medium tracking-wide">CRYPTO</div>
             </div>
           </div>
         </div>
 
         <div className="pt-8 border-t border-dark-800/50 flex flex-col md:flex-row items-center justify-between gap-4">
-          <p className="text-dark-500 text-sm">
+          <p className="text-dark-300 text-sm">
             &copy; {currentYear} GiftVault. {t('footer.rights')}
           </p>
-          <div className="flex items-center gap-2 text-dark-500 text-sm">
+          <div className="flex items-center gap-2 text-dark-300 text-sm">
             <span>Built for gamers by gamers</span>
           </div>
         </div>

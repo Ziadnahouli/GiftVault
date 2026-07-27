@@ -84,8 +84,8 @@ export default function Home() {
                   <Zap className="w-6 h-6" />
                 </div>
                 <div>
-                  <h3 className="text-white font-bold mb-1">Instant Delivery</h3>
-                  <p className="text-dark-400 text-sm">Get your codes immediately via WhatsApp</p>
+                  <h2 className="text-white font-bold text-base mb-1">Instant Delivery</h2>
+                  <p className="text-dark-300 text-sm">Get your codes immediately via WhatsApp</p>
                 </div>
               </div>
               <div className="flex items-center gap-4 p-6 glass-card">
@@ -93,8 +93,8 @@ export default function Home() {
                   <ShieldCheck className="w-6 h-6" />
                 </div>
                 <div>
-                  <h3 className="text-white font-bold mb-1">Secure Payments</h3>
-                  <p className="text-dark-400 text-sm">100% safe and encrypted transactions</p>
+                  <h2 className="text-white font-bold text-base mb-1">Secure Payments</h2>
+                  <p className="text-dark-300 text-sm">100% safe and encrypted transactions</p>
                 </div>
               </div>
               <div className="flex items-center gap-4 p-6 glass-card">
@@ -102,8 +102,8 @@ export default function Home() {
                   <Sparkles className="w-6 h-6" />
                 </div>
                 <div>
-                  <h3 className="text-white font-bold mb-1">Best Prices</h3>
-                  <p className="text-dark-400 text-sm">Unbeatable deals on all top brands</p>
+                  <h2 className="text-white font-bold text-base mb-1">Best Prices</h2>
+                  <p className="text-dark-300 text-sm">Unbeatable deals on all top brands</p>
                 </div>
               </div>
             </div>
@@ -118,7 +118,7 @@ export default function Home() {
                 <h2 className="section-title">{t('home.featured_products')}</h2>
                 <p className="section-subtitle">Handpicked deals just for you</p>
               </div>
-              <Link href="/shop?featured=true" className="hidden sm:flex items-center gap-2 text-primary-400 hover:text-primary-300 font-medium transition-colors">
+              <Link href="/shop?featured=true" aria-label="View all featured products" className="hidden sm:flex items-center gap-2 text-primary-400 hover:text-primary-300 font-medium transition-colors">
                 {t('home.view_all')} <ArrowRight className="w-4 h-4 rtl-flip" />
               </Link>
             </div>
@@ -133,14 +133,14 @@ export default function Home() {
                   <ProductCard key={product.id} product={product} />
                 ))
               ) : (
-                <div className="col-span-full py-12 text-center text-dark-500 bg-dark-900 rounded-2xl border border-dark-800">
+                <div className="col-span-full py-12 text-center text-dark-300 bg-dark-900 rounded-2xl border border-dark-800">
                   No featured products available.
                 </div>
               )}
             </div>
             
             <div className="mt-8 text-center sm:hidden">
-              <Link href="/shop?featured=true" className="btn-secondary w-full">
+              <Link href="/shop?featured=true" aria-label="View all featured products" className="btn-secondary w-full">
                 {t('home.view_all')}
               </Link>
             </div>
@@ -154,22 +154,25 @@ export default function Home() {
               <h2 className="section-title text-center mb-12">{t('home.categories')}</h2>
               
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                {categories.map((cat: any) => (
-                  <Link href={`/shop?category=${cat.slug}`} key={cat.id} className="group relative aspect-square overflow-hidden rounded-2xl border border-white/5">
-                    {cat.image ? (
-                      <img src={cat.image} alt={cat.name_en} className="absolute inset-0 w-full h-full object-cover transform group-hover:scale-110 transition-transform duration-700" />
-                    ) : (
-                      <div className="absolute inset-0 bg-gradient-to-br from-dark-800 to-dark-900" />
-                    )}
-                    <div className="absolute inset-0 bg-gradient-to-t from-dark-950 via-dark-950/60 to-transparent"></div>
-                    <div className="absolute inset-0 p-6 flex flex-col justify-end">
-                      <h3 className="text-xl font-bold text-white group-hover:text-primary-400 transition-colors">
-                        {language === 'ar' ? cat.name_ar : cat.name_en}
-                      </h3>
-                      <p className="text-sm text-dark-400 mt-1">{cat.product_count} products</p>
-                    </div>
-                  </Link>
-                ))}
+                {categories.map((cat: any) => {
+                  const catName = language === 'ar' ? cat.name_ar : cat.name_en;
+                  return (
+                    <Link href={`/shop?category=${cat.slug}`} key={cat.id} aria-label={`Explore ${catName} category`} className="group relative aspect-square overflow-hidden rounded-2xl border border-white/5">
+                      {cat.image ? (
+                        <img src={cat.image} alt={catName} className="absolute inset-0 w-full h-full object-cover transform group-hover:scale-110 transition-transform duration-700" />
+                      ) : (
+                        <div className="absolute inset-0 bg-gradient-to-br from-dark-800 to-dark-900" />
+                      )}
+                      <div className="absolute inset-0 bg-gradient-to-t from-dark-950 via-dark-950/60 to-transparent"></div>
+                      <div className="absolute inset-0 p-6 flex flex-col justify-end">
+                        <h3 className="text-xl font-bold text-white group-hover:text-primary-400 transition-colors">
+                          {catName}
+                        </h3>
+                        <p className="text-sm text-dark-300 mt-1">{cat.product_count} products</p>
+                      </div>
+                    </Link>
+                  );
+                })}
               </div>
             </div>
           </section>
@@ -183,7 +186,7 @@ export default function Home() {
                 <h2 className="section-title">{t('home.best_sellers')}</h2>
                 <p className="section-subtitle">Our most popular gift cards</p>
               </div>
-              <Link href="/shop?best_seller=true" className="hidden sm:flex items-center gap-2 text-primary-400 hover:text-primary-300 font-medium transition-colors">
+              <Link href="/shop?best_seller=true" aria-label="View all best seller gift cards" className="hidden sm:flex items-center gap-2 text-primary-400 hover:text-primary-300 font-medium transition-colors">
                 {t('home.view_all')} <ArrowRight className="w-4 h-4 rtl-flip" />
               </Link>
             </div>
@@ -198,7 +201,7 @@ export default function Home() {
                   <ProductCard key={product.id} product={product} />
                 ))
               ) : (
-                <div className="col-span-full py-12 text-center text-dark-500 bg-dark-900 rounded-2xl border border-dark-800">
+                <div className="col-span-full py-12 text-center text-dark-300 bg-dark-900 rounded-2xl border border-dark-800">
                   No products available.
                 </div>
               )}

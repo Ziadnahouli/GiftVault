@@ -29,20 +29,23 @@ export function ProductCard({ product }: ProductCardProps) {
   const rating = product.avg_rating || 0;
 
   return (
-    <Link href={`/product/${product.slug}`} className="group block h-full">
+    <Link href={`/product/${product.slug}`} aria-label={`View ${name} gift card details`} className="group block h-full">
       <div className="glass-card h-full flex flex-col overflow-hidden relative">
         {/* Image Container */}
         <div className="relative aspect-[3/4] w-full overflow-hidden bg-dark-900">
           <div className="absolute inset-0 bg-gradient-to-t from-dark-900 to-transparent z-10 opacity-60"></div>
           
           {product.image ? (
-            <img 
+            <Image 
               src={product.image} 
               alt={name}
+              fill
+              sizes="(max-width: 768px) 50vw, (max-width: 1200px) 33vw, 25vw"
+              loading="lazy"
               className="object-cover w-full h-full transform group-hover:scale-105 transition-transform duration-500"
             />
           ) : (
-            <div className="w-full h-full flex items-center justify-center bg-dark-800 text-dark-500">
+            <div className="w-full h-full flex items-center justify-center bg-dark-800 text-dark-300">
               No Image
             </div>
           )}
@@ -68,12 +71,12 @@ export function ProductCard({ product }: ProductCardProps) {
                 <Star key={i} className={`w-3.5 h-3.5 ${i < Math.floor(rating) ? 'fill-current' : 'text-dark-600'}`} />
               ))}
             </div>
-            <span className="text-xs text-dark-400">({product.review_count || 0})</span>
+            <span className="text-xs text-dark-300">({product.review_count || 0})</span>
           </div>
 
           <div className="mt-auto flex items-center justify-between">
             <div className="flex flex-col">
-              <span className="text-[10px] text-dark-400 uppercase tracking-wider">Starting at</span>
+              <span className="text-[10px] text-dark-300 uppercase tracking-wider">Starting at</span>
               <span className="text-xl font-bold text-white">
                 {product.min_price ? formatPrice(product.min_price) : 'N/A'}
               </span>
