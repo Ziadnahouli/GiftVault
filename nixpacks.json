@@ -1,0 +1,18 @@
+{
+  "providers": ["node"],
+  "nixPkgs": ["nodejs_20", "python3", "gcc", "gnumake", "sqlite"],
+  "phases": {
+    "setup": {
+      "nixPkgs": ["nodejs_20", "python3", "gcc", "gnumake", "sqlite"]
+    },
+    "install": {
+      "cmds": ["cd server && npm install"]
+    },
+    "build": {
+      "cmds": ["cd server && npm run build"]
+    }
+  },
+  "start": {
+    "cmd": "cd server && node dist/index.js"
+  }
+}
