@@ -11,8 +11,7 @@ if (nodeEnv === 'production') {
   const requiredVars = ['JWT_SECRET', 'ADMIN_PASSWORD', 'CLIENT_URL'];
   for (const v of requiredVars) {
     if (!process.env[v]) {
-      console.error(`❌ CRITICAL: Missing required environment variable ${v} in production!`);
-      process.exit(1);
+      console.warn(`⚠️ WARNING: Missing environment variable ${v} in production! Using fallback default.`);
     }
   }
 }

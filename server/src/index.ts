@@ -34,33 +34,25 @@ const app = express();
 // Trust Railway's reverse proxy (required for rate limiting behind a proxy)
 app.set('trust proxy', 1);
 
-// Foolproof CORS middleware: must run FIRST before helmet, maintenance, or rate limiting
-app.use((req, res, next) => {
-  const origin = req.headers.origin;
-  if (origin) {
-    res.setHeader('Access-Control-Allow-Origin', origin);
-  } else {
-    res.setHeader('Access-Control-Allow-Origin', '*');
-  }
-  res.setHeader('Access-Control-Allow-Credentials', 'true');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, x-session-token, X-Requested-With, Accept');
+// Enable CORS for all routes and preflight OPTIONS requests
+const corsOptions = {
+  origin: true, // Echoes back the requesting origin (e.g. https://gift-vault.me)
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'x-session-token', 'X-Requested-With', 'Accept'],
+};
 
-  // Respond immediately to OPTIONS preflight requests
-  if (req.method === 'OPTIONS') {
-    res.status(200).end();
-    return;
-  }
-  next();
-});
+app.use(cors(corsOptions));
+app.options('*', cors(corsOptions));
 
 // Block traffic briefly during live database replace/restore
 app.use(maintenanceGuard);
 
-// Helmet for security headers
+// Helmet with permissive cross-origin resource sharing headers
 app.use(
   helmet({
-    crossOriginResourcePolicy: { policy: 'cross-origin' },
+    crossOriginResourcePolicy: false,
+    crossOriginOpenerPolicy: false,
   })
 );
 
