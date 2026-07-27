@@ -8,6 +8,7 @@ import { toast } from 'react-hot-toast';
 import { fetchApi } from '@/lib/api';
 import { useAuth } from '@/contexts/AuthContext';
 import { Navbar } from '@/components/layout/Navbar';
+import { auth, RecaptchaVerifier, signInWithPhoneNumber, ConfirmationResult } from '@/lib/firebase';
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -33,6 +34,7 @@ export default function RegisterPage() {
   const [demoCodeHint, setDemoCodeHint] = useState<string | null>(null);
   const [registeredUser, setRegisteredUser] = useState<any>(null);
   const [authTokens, setAuthTokens] = useState<{ token: string; sessionToken: string } | null>(null);
+  const [confirmationResult, setConfirmationResult] = useState<ConfirmationResult | null>(null);
 
   // Password Strength Rules
   const passwordRules = [
@@ -45,6 +47,25 @@ export default function RegisterPage() {
 
   const validCount = passwordRules.filter((r) => r.valid).length;
   const isPasswordStrong = validCount >= 4;
+
+  const sendFirebasePhoneSms = async (phone: string) => {
+    try {
+      let recaptchaVerifier = (window as any).recaptchaVerifier;
+      if (!recaptchaVerifier) {
+        recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
+          size: 'invisible',
+          callback: () => {},
+        });
+        (window as any).recaptchaVerifier = recaptchaVerifier;
+      }
+      const cleanPhone = phone.startsWith('+') ? phone : `+${phone.replace(/\D/g, '')}`;
+      const confirmation = await signInWithPhoneNumber(auth, cleanPhone, recaptchaVerifier);
+      setConfirmationResult(confirmation);
+      toast.success(`SMS OTP sent to ${cleanPhone}`);
+    } catch (err: any) {
+      console.warn('Firebase SMS warning:', err?.message || err);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -84,6 +105,10 @@ export default function RegisterPage() {
 
       setAuthTokens({ token: res.token, sessionToken: res.sessionToken });
       setRegisteredUser(res.user);
+
+      if (registerMode === 'phone') {
+        sendFirebasePhoneSms(formData.phoneNumber);
+      }
 
       if (res.requiresVerification) {
         setVerificationType(res.verificationType || registerMode);
@@ -164,6 +189,7 @@ export default function RegisterPage() {
       <Navbar />
 
       <main className="flex-grow flex items-center justify-center p-4 py-12 relative overflow-hidden">
+        <div id="recaptcha-container"></div>
         {/* Background glow accents */}
         <div className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-primary-600/15 rounded-full blur-3xl pointer-events-none"></div>
 
