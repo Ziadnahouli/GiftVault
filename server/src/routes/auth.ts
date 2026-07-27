@@ -198,12 +198,15 @@ router.post('/register', async (req: AuthRequest, res: Response) => {
     const { sessionToken } = createSession(userId, req, true);
     const token = generateToken({ id: userId, email: cleanEmail, role: 'customer', name: sanitize(name) });
 
+    const smtpConfigured = Boolean(config.email.user && config.email.pass);
+
     res.status(201).json({
       message,
       token,
       sessionToken,
       requiresVerification: true,
       verificationType,
+      verificationCode: (!smtpConfigured || method === 'phone') ? verificationCode : undefined,
       user: formatUserResponse(userRow),
     });
   } catch (error: any) {
@@ -554,8 +557,11 @@ router.post('/resend-code', async (req: AuthRequest, res: Response) => {
       console.log(`📧 [RESEND EMAIL CODE] 6-digit code sent to email ${user.email}`);
     }
 
+    const smtpConfigured = Boolean(config.email.user && config.email.pass);
+
     res.json({
       message: `A new 6-digit verification code has been sent to your ${resendType === 'phone' ? 'phone number' : 'email inbox'}.`,
+      verificationCode: (!smtpConfigured || resendType === 'phone') ? newCode : undefined,
     });
   } catch (error: any) {
     console.error('Resend code error:', error);
