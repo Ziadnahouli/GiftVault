@@ -94,8 +94,49 @@ export function initializeDatabase(): void {
       preferred_lang TEXT DEFAULT 'en',
       preferred_currency TEXT DEFAULT 'USD',
       is_active INTEGER DEFAULT 1,
+      firebase_uid TEXT UNIQUE,
+      phone_number TEXT UNIQUE,
+      email_verified INTEGER DEFAULT 0,
+      phone_verified INTEGER DEFAULT 0,
+      account_status TEXT DEFAULT 'active',
+      last_login DATETIME,
+      failed_login_attempts INTEGER DEFAULT 0,
+      locked_until DATETIME,
+      remember_me_token TEXT,
+      auth_provider TEXT DEFAULT 'local',
+      registration_method TEXT DEFAULT 'email',
+      notification_settings TEXT DEFAULT '{"email":true,"sms":true,"security":true}',
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
+
+    -- User Sessions table (for active sessions & connected devices management)
+    CREATE TABLE IF NOT EXISTS user_sessions (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL,
+      session_token TEXT UNIQUE NOT NULL,
+      refresh_token TEXT UNIQUE,
+      device_name TEXT,
+      browser TEXT,
+      os TEXT,
+      ip_address TEXT,
+      location TEXT,
+      last_active DATETIME DEFAULT CURRENT_TIMESTAMP,
+      expires_at DATETIME,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    );
+
+    -- Auth Tokens table (for email verification, password reset, email & phone change)
+    CREATE TABLE IF NOT EXISTS auth_tokens (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL,
+      token TEXT UNIQUE NOT NULL,
+      type TEXT NOT NULL CHECK(type IN ('email_verification', 'password_reset', 'email_change', 'phone_change')),
+      new_value TEXT,
+      expires_at DATETIME NOT NULL,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
     );
 
     -- Categories table
@@ -433,9 +474,60 @@ export function runMigrations(): void {
   safeAddColumn('gift_card_values', 'supplier_region_id', "TEXT DEFAULT ''");
   safeAddColumn('gift_card_values', 'api_mapping', "TEXT DEFAULT ''");
 
-  // Create indexes for new columns safely
+  // users table new columns
+  safeAddColumn('users', 'firebase_uid', 'TEXT');
+  safeAddColumn('users', 'phone_number', 'TEXT');
+  safeAddColumn('users', 'email_verified', 'INTEGER DEFAULT 0');
+  safeAddColumn('users', 'phone_verified', 'INTEGER DEFAULT 0');
+  safeAddColumn('users', 'account_status', "TEXT DEFAULT 'active'");
+  safeAddColumn('users', 'last_login', 'DATETIME');
+  safeAddColumn('users', 'failed_login_attempts', 'INTEGER DEFAULT 0');
+  safeAddColumn('users', 'locked_until', 'DATETIME');
+  safeAddColumn('users', 'remember_me_token', 'TEXT');
+  safeAddColumn('users', 'auth_provider', "TEXT DEFAULT 'local'");
+  safeAddColumn('users', 'registration_method', "TEXT DEFAULT 'email'");
+  safeAddColumn('users', 'notification_settings', `TEXT DEFAULT '{"email":true,"sms":true,"security":true}'`);
+
+  // Ensure sessions and tokens tables exist
+  _db.exec(`
+    CREATE TABLE IF NOT EXISTS user_sessions (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL,
+      session_token TEXT UNIQUE NOT NULL,
+      refresh_token TEXT UNIQUE,
+      device_name TEXT,
+      browser TEXT,
+      os TEXT,
+      ip_address TEXT,
+      location TEXT,
+      last_active DATETIME DEFAULT CURRENT_TIMESTAMP,
+      expires_at DATETIME,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    );
+
+    CREATE TABLE IF NOT EXISTS auth_tokens (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL,
+      token TEXT UNIQUE NOT NULL,
+      type TEXT NOT NULL CHECK(type IN ('email_verification', 'password_reset', 'email_change', 'phone_change')),
+      new_value TEXT,
+      expires_at DATETIME NOT NULL,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    );
+  `);
+
+  // Create indexes for auth and session performance
   try {
     _db.exec(`
+      CREATE INDEX IF NOT EXISTS idx_users_firebase_uid ON users(firebase_uid);
+      CREATE INDEX IF NOT EXISTS idx_users_phone_number ON users(phone_number);
+      CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
+      CREATE INDEX IF NOT EXISTS idx_user_sessions_user ON user_sessions(user_id);
+      CREATE INDEX IF NOT EXISTS idx_user_sessions_token ON user_sessions(session_token);
+      CREATE INDEX IF NOT EXISTS idx_auth_tokens_user ON auth_tokens(user_id);
+      CREATE INDEX IF NOT EXISTS idx_auth_tokens_token ON auth_tokens(token);
       CREATE INDEX IF NOT EXISTS idx_gift_card_values_sku ON gift_card_values(sku);
       CREATE INDEX IF NOT EXISTS idx_gift_card_values_stock ON gift_card_values(stock);
     `);

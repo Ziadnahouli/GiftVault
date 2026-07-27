@@ -39,4 +39,22 @@ export const config = {
     password: process.env.ADMIN_PASSWORD || 'Admin123!',
   },
   exchangeRateApiUrl: process.env.EXCHANGE_RATE_API_URL || 'https://open.er-api.com/v6/latest/USD',
+  firebase: {
+    projectId: process.env.FIREBASE_PROJECT_ID || 'giftvault-app',
+    clientEmail: process.env.FIREBASE_CLIENT_EMAIL || '',
+    privateKey: (process.env.FIREBASE_PRIVATE_KEY || '').replace(/\\n/g, '\n'),
+    serviceAccount: process.env.FIREBASE_SERVICE_ACCOUNT || '',
+  },
+  email: {
+    host: process.env.SMTP_HOST || 'smtp.gmail.com',
+    port: parseInt(process.env.SMTP_PORT || '587', 10),
+    user: process.env.SMTP_USER || '',
+    pass: process.env.SMTP_PASS || '',
+    from: process.env.EMAIL_FROM || 'GiftVault <noreply@giftvault.com>',
+  },
+  auth: {
+    lockoutMaxAttempts: 5,
+    lockoutDurationMinutes: 15,
+    tokenExpirationHours: 24,
+  },
 };

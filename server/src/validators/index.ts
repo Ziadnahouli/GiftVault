@@ -1,24 +1,57 @@
 import { z } from 'zod';
 
 export const registerSchema = z.object({
-  name: z.string().min(2).max(100),
-  email: z.string().email().max(255),
-  password: z.string().min(6).max(100),
+  name: z.string().min(2, 'Name must be at least 2 characters').max(100),
+  email: z.string().email('Invalid email address').max(255),
+  phoneNumber: z.string().regex(/^\+?[1-9]\d{7,14}$/, 'Invalid international phone number (E.164 format e.g. +1234567890)').optional().or(z.literal('')),
+  password: z.string().min(8, 'Password must be at least 8 characters long'),
   country: z.string().max(100).optional(),
   whatsapp: z.string().max(20).optional(),
 });
 
 export const loginSchema = z.object({
-  email: z.string().email(),
-  password: z.string().min(1),
+  identifier: z.string().min(1, 'Email or Phone Number is required').optional(),
+  email: z.string().optional(),
+  password: z.string().min(1, 'Password is required'),
+  rememberMe: z.boolean().optional(),
+});
+
+export const firebaseLoginSchema = z.object({
+  idToken: z.string().min(1, 'Firebase ID Token is required'),
+  rememberMe: z.boolean().optional(),
 });
 
 export const updateProfileSchema = z.object({
   name: z.string().min(2).max(100).optional(),
+  avatar: z.string().optional(),
   country: z.string().max(100).optional(),
   whatsapp: z.string().max(20).optional(),
   preferred_lang: z.enum(['en', 'ar']).optional(),
   preferred_currency: z.string().max(3).optional(),
+  notification_settings: z.object({
+    email: z.boolean().optional(),
+    sms: z.boolean().optional(),
+    security: z.boolean().optional(),
+  }).optional(),
+});
+
+export const changeEmailSchema = z.object({
+  newEmail: z.string().email('Invalid email address').max(255),
+  currentPassword: z.string().min(1, 'Current password is required'),
+});
+
+export const changePhoneSchema = z.object({
+  newPhone: z.string().regex(/^\+?[1-9]\d{7,14}$/, 'Invalid international phone number (E.164 format)'),
+  verificationCode: z.string().min(6).max(6).optional(),
+});
+
+export const forgotPasswordSchema = z.object({
+  email: z.string().email('Invalid email address'),
+});
+
+export const resetPasswordSchema = z.object({
+  token: z.string().min(1, 'Reset token is required'),
+  newPassword: z.string().min(8, 'Password must be at least 8 characters long'),
 });
 
 export const productSchema = z.object({

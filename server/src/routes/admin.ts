@@ -865,4 +865,228 @@ router.delete('/coupons/:id', (req: AuthRequest, res: Response) => {
   }
 });
 
+// ==================== USER MANAGEMENT ====================
+
+// GET /api/admin/users
+router.get('/users', (req: AuthRequest, res: Response) => {
+  try {
+    const page = parseInt(req.query.page as string || '1', 10);
+    const limit = parseInt(req.query.limit as string || '20', 10);
+    const search = req.query.search as string || '';
+    const status = req.query.status as string || '';
+    const role = req.query.role as string || '';
+    const offset = (page - 1) * limit;
+
+    let whereConditions: string[] = ['1=1'];
+    let params: any[] = [];
+
+    if (search) {
+      whereConditions.push('(name LIKE ? OR email LIKE ? OR phone_number LIKE ? OR firebase_uid LIKE ?)');
+      const searchTerm = `%${search}%`;
+      params.push(searchTerm, searchTerm, searchTerm, searchTerm);
+    }
+
+    if (status) {
+      whereConditions.push('account_status = ?');
+      params.push(status);
+    }
+
+    if (role) {
+      whereConditions.push('role = ?');
+      params.push(role);
+    }
+
+    const whereClause = whereConditions.join(' AND ');
+
+    const totalCount = (db.prepare(`SELECT COUNT(*) as count FROM users WHERE ${whereClause}`).get(...params) as any).count;
+
+    const users = db.prepare(`
+      SELECT 
+        id, name, email, phone_number, role, avatar, country, whatsapp,
+        preferred_lang, preferred_currency, is_active, firebase_uid,
+        email_verified, phone_verified, account_status, last_login,
+        failed_login_attempts, locked_until, auth_provider, registration_method, created_at
+      FROM users
+      WHERE ${whereClause}
+      ORDER BY created_at DESC
+      LIMIT ? OFFSET ?
+    `).all(...params, limit, offset);
+
+    res.json({
+      users: users.map((u: any) => ({
+        id: u.id,
+        name: u.name,
+        email: u.email,
+        phoneNumber: u.phone_number || u.whatsapp || null,
+        role: u.role,
+        avatar: u.avatar || null,
+        country: u.country || null,
+        whatsapp: u.whatsapp || null,
+        emailVerified: Boolean(u.email_verified),
+        phoneVerified: Boolean(u.phone_verified),
+        accountStatus: u.account_status || (u.is_active ? 'active' : 'disabled'),
+        firebaseUid: u.firebase_uid || null,
+        authProvider: u.auth_provider || 'local',
+        registrationMethod: u.registration_method || 'email',
+        lastLogin: u.last_login || null,
+        failedLoginAttempts: u.failed_login_attempts || 0,
+        lockedUntil: u.locked_until || null,
+        createdAt: u.created_at,
+      })),
+      pagination: {
+        page,
+        limit,
+        total: totalCount,
+        totalPages: Math.ceil(totalCount / limit),
+      },
+    });
+  } catch (error: any) {
+    console.error('Admin users error:', error);
+    res.status(500).json({ error: 'Failed to fetch users' });
+  }
+});
+
+// GET /api/admin/users/:id
+router.get('/users/:id', (req: AuthRequest, res: Response) => {
+  try {
+    const userId = parseInt(req.params.id, 10);
+    const user = db.prepare(`
+      SELECT 
+        id, name, email, phone_number, role, avatar, country, whatsapp,
+        preferred_lang, preferred_currency, is_active, firebase_uid,
+        email_verified, phone_verified, account_status, last_login,
+        failed_login_attempts, locked_until, auth_provider, registration_method, created_at
+      FROM users WHERE id = ?
+    `).get(userId) as any;
+
+    if (!user) {
+      res.status(404).json({ error: 'User not found' });
+      return;
+    }
+
+    const activeSessions = db.prepare(`
+      SELECT id, device_name, browser, os, ip_address, location, last_active, created_at
+      FROM user_sessions WHERE user_id = ? ORDER BY last_active DESC
+    `).all(userId);
+
+    const orderStats = db.prepare(`
+      SELECT COUNT(*) as total_orders, COALESCE(SUM(total_usd), 0) as total_spent
+      FROM orders WHERE user_id = ? AND status != 'cancelled'
+    `).get(userId);
+
+    res.json({
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        phoneNumber: user.phone_number || user.whatsapp || null,
+        role: user.role,
+        avatar: user.avatar || null,
+        country: user.country || null,
+        whatsapp: user.whatsapp || null,
+        emailVerified: Boolean(user.email_verified),
+        phoneVerified: Boolean(user.phone_verified),
+        accountStatus: user.account_status || (user.is_active ? 'active' : 'disabled'),
+        firebaseUid: user.firebase_uid || null,
+        authProvider: user.auth_provider || 'local',
+        registrationMethod: user.registration_method || 'email',
+        lastLogin: user.last_login || null,
+        failedLoginAttempts: user.failed_login_attempts || 0,
+        lockedUntil: user.locked_until || null,
+        createdAt: user.created_at,
+      },
+      activeSessions,
+      orderStats,
+    });
+  } catch (error: any) {
+    res.status(500).json({ error: 'Failed to fetch user details' });
+  }
+});
+
+// PATCH /api/admin/users/:id/status (Enable / Disable User)
+router.patch('/users/:id/status', (req: AuthRequest, res: Response) => {
+  try {
+    const userId = parseInt(req.params.id, 10);
+    const { status } = req.body; // 'active' or 'disabled'
+
+    if (!['active', 'disabled'].includes(status)) {
+      res.status(400).json({ error: 'Invalid status. Must be "active" or "disabled".' });
+      return;
+    }
+
+    const isActive = status === 'active' ? 1 : 0;
+    db.prepare(`UPDATE users SET account_status = ?, is_active = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`).run(status, isActive, userId);
+
+    if (status === 'disabled') {
+      // Revoke all sessions if user is disabled
+      db.prepare(`DELETE FROM user_sessions WHERE user_id = ?`).run(userId);
+    }
+
+    res.json({ message: `User account has been ${status === 'active' ? 'enabled' : 'disabled'}` });
+  } catch (error: any) {
+    res.status(500).json({ error: 'Failed to update user status' });
+  }
+});
+
+// POST /api/admin/users/:id/force-password-reset
+router.post('/users/:id/force-password-reset', async (req: AuthRequest, res: Response) => {
+  try {
+    const userId = parseInt(req.params.id, 10);
+    const user = db.prepare('SELECT name, email FROM users WHERE id = ?').get(userId) as any;
+
+    if (!user) {
+      res.status(404).json({ error: 'User not found' });
+      return;
+    }
+
+    const { generateAuthToken } = await import('../services/sessionService');
+    const { sendPasswordResetEmail } = await import('../services/emailService');
+    const { config } = await import('../config');
+
+    const resetToken = generateAuthToken(userId, 'password_reset', undefined, 1);
+    const resetLink = `${config.clientUrl}/reset-password?token=${resetToken}`;
+    await sendPasswordResetEmail(user.name, user.email, resetLink);
+
+    res.json({ message: `Password reset email sent to ${user.email}` });
+  } catch (error: any) {
+    res.status(500).json({ error: 'Failed to trigger password reset' });
+  }
+});
+
+// POST /api/admin/users/:id/force-verify-email
+router.post('/users/:id/force-verify-email', (req: AuthRequest, res: Response) => {
+  try {
+    const userId = parseInt(req.params.id, 10);
+    db.prepare('UPDATE users SET email_verified = 1, updated_at = CURRENT_TIMESTAMP WHERE id = ?').run(userId);
+    res.json({ message: 'User email marked as verified' });
+  } catch (error: any) {
+    res.status(500).json({ error: 'Failed to verify user email' });
+  }
+});
+
+// GET /api/admin/users/:id/sessions
+router.get('/users/:id/sessions', (req: AuthRequest, res: Response) => {
+  try {
+    const userId = parseInt(req.params.id, 10);
+    const sessions = db.prepare(`
+      SELECT id, device_name, browser, os, ip_address, location, last_active, created_at
+      FROM user_sessions WHERE user_id = ? ORDER BY last_active DESC
+    `).all(userId);
+    res.json({ sessions });
+  } catch (error: any) {
+    res.status(500).json({ error: 'Failed to fetch user sessions' });
+  }
+});
+
+// POST /api/admin/users/:id/logout-all
+router.post('/users/:id/logout-all', (req: AuthRequest, res: Response) => {
+  try {
+    const userId = parseInt(req.params.id, 10);
+    const result = db.prepare('DELETE FROM user_sessions WHERE user_id = ?').run(userId);
+    res.json({ message: `Revoked ${result.changes} active sessions for target user` });
+  } catch (error: any) {
+    res.status(500).json({ error: 'Failed to logout user from all devices' });
+  }
+});
+
 export default router;
