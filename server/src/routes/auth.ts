@@ -180,15 +180,13 @@ router.post('/register', async (req: AuthRequest, res: Response) => {
     if (method === 'phone') {
       verificationType = 'phone';
       verificationCode = generateNumericAuthToken(userId, 'phone_otp', undefined, 15);
-      sendPhoneOTP(cleanPhone || '', verificationCode).catch((err) => {
-        console.error(`❌ Error sending Phone OTP to ${cleanPhone}:`, err?.message || err);
-      });
+      await sendPhoneOTP(cleanPhone || '', verificationCode);
       message = `Registration successful! A 6-digit OTP code has been sent to ${cleanPhone}. Please verify your phone number to complete registration.`;
     } else {
       verificationType = 'email';
       verificationCode = generateNumericAuthToken(userId, 'email_verification', undefined, 1440);
 
-      sendVerificationCodeEmail(sanitize(name), cleanEmail, verificationCode).catch((err) => {
+      await sendVerificationCodeEmail(sanitize(name), cleanEmail, verificationCode).catch((err) => {
         console.error(`❌ Error sending verification code email to ${cleanEmail}:`, err?.message || err);
       });
       console.log(`🔑 [EMAIL VERIFICATION CODE FOR ${cleanEmail}]: ${verificationCode}`);
@@ -547,9 +545,7 @@ router.post('/resend-code', async (req: AuthRequest, res: Response) => {
     let newCode = '';
     if (resendType === 'phone') {
       newCode = generateNumericAuthToken(user.id, 'phone_otp', undefined, 15);
-      sendPhoneOTP(user.phone_number || user.whatsapp, newCode).catch((err) => {
-        console.error(`❌ Error resending Phone OTP to ${user.phone_number}:`, err?.message || err);
-      });
+      await sendPhoneOTP(user.phone_number || user.whatsapp, newCode);
     } else {
       newCode = generateNumericAuthToken(user.id, 'email_verification', undefined, 1440);
 
