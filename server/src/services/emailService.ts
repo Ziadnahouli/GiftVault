@@ -200,6 +200,22 @@ export async function sendVerificationEmail(name: string, to: string, verificati
   return sendMail(to, 'Verify Your Email Address - GiftVault', html);
 }
 
+export async function sendVerificationCodeEmail(name: string, to: string, code: string): Promise<boolean> {
+  const html = renderBaseTemplate(
+    'Your Verification Code',
+    `
+      <div class="badge">Account Verification</div>
+      <h1>Your 6-Digit Verification Code</h1>
+      <p>Hi ${name}, thank you for registering with GiftVault. Use the 6-digit code below to complete your verification:</p>
+      <div style="text-align: center; margin: 20px 0;">
+        <div class="code-box" style="font-size: 32px; letter-spacing: 6px; font-family: monospace;">${code}</div>
+      </div>
+      <p>This code is valid for 15 minutes. For your security, do not share this code with anyone.</p>
+    `
+  );
+  return sendMail(to, `${code} is your GiftVault Verification Code`, html);
+}
+
 export async function sendPasswordResetEmail(name: string, to: string, resetLink: string): Promise<boolean> {
   const html = renderBaseTemplate(
     'Reset Your Password',

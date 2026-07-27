@@ -386,13 +386,6 @@ export default function RegisterPage() {
                 </p>
               </div>
 
-              {demoCodeHint && (
-                <div className="p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-xs text-amber-300 text-center">
-                  🔑 <span className="font-semibold">Demo Code:</span> Use code{' '}
-                  <span className="font-mono text-base font-bold underline tracking-widest text-amber-200">{demoCodeHint}</span>
-                </div>
-              )}
-
               <form onSubmit={handleVerifyCode} className="space-y-4">
                 <div>
                   <label className="block text-xs font-semibold text-dark-300 uppercase tracking-wider mb-2 text-center">

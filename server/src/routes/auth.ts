@@ -18,6 +18,7 @@ import { verifyFirebaseIdToken } from '../config/firebaseAdmin';
 import {
   sendWelcomeEmail,
   sendVerificationEmail,
+  sendVerificationCodeEmail,
   sendPasswordResetEmail,
   sendEmailChangedNotification,
   sendPhoneChangedNotification,
@@ -178,7 +179,7 @@ router.post('/register', async (req: AuthRequest, res: Response) => {
     if (method === 'phone') {
       verificationType = 'phone';
       verificationCode = generateNumericAuthToken(userId, 'phone_otp', undefined, 15);
-      console.log(`📱 [PHONE OTP] Sent 6-digit OTP code ${verificationCode} to phone ${cleanPhone}`);
+      console.log(`📱 [PHONE OTP] Sent 6-digit OTP code to phone ${cleanPhone}`);
       message = `Registration successful! A 6-digit OTP code has been sent to ${cleanPhone}. Please verify your phone number to complete registration.`;
     } else {
       verificationType = 'email';
@@ -188,7 +189,8 @@ router.post('/register', async (req: AuthRequest, res: Response) => {
 
       sendWelcomeEmail(sanitize(name), cleanEmail).catch(() => {});
       sendVerificationEmail(sanitize(name), cleanEmail, verificationLink).catch(() => {});
-      console.log(`📧 [EMAIL CODE] Sent 6-digit verification code ${verificationCode} to email ${cleanEmail}`);
+      sendVerificationCodeEmail(sanitize(name), cleanEmail, verificationCode).catch(() => {});
+      console.log(`📧 [EMAIL CODE] Sent 6-digit verification code to email ${cleanEmail}`);
       message = `Registration successful! A 6-digit verification code has been sent to ${cleanEmail}. Please check your inbox to complete registration.`;
     }
 
@@ -202,7 +204,6 @@ router.post('/register', async (req: AuthRequest, res: Response) => {
       sessionToken,
       requiresVerification: true,
       verificationType,
-      verificationCode, // Included for instant testing & frontend demonstration
       user: formatUserResponse(userRow),
     });
   } catch (error: any) {
@@ -542,19 +543,19 @@ router.post('/resend-code', async (req: AuthRequest, res: Response) => {
     let newCode = '';
     if (resendType === 'phone') {
       newCode = generateNumericAuthToken(user.id, 'phone_otp', undefined, 15);
-      console.log(`📱 [RESEND PHONE OTP] 6-digit code for ${user.phone_number}: ${newCode}`);
+      console.log(`📱 [RESEND PHONE OTP] 6-digit code sent to ${user.phone_number}`);
     } else {
       newCode = generateNumericAuthToken(user.id, 'email_verification', undefined, 1440);
       const linkToken = generateAuthToken(user.id, 'email_verification', undefined, 24);
       const verificationLink = `${config.clientUrl}/verify-email?token=${linkToken}`;
 
       sendVerificationEmail(user.name, user.email, verificationLink).catch(() => {});
-      console.log(`📧 [RESEND EMAIL CODE] 6-digit code for ${user.email}: ${newCode}`);
+      sendVerificationCodeEmail(user.name, user.email, newCode).catch(() => {});
+      console.log(`📧 [RESEND EMAIL CODE] 6-digit code sent to email ${user.email}`);
     }
 
     res.json({
       message: `A new 6-digit verification code has been sent to your ${resendType === 'phone' ? 'phone number' : 'email inbox'}.`,
-      verificationCode: newCode,
     });
   } catch (error: any) {
     console.error('Resend code error:', error);
