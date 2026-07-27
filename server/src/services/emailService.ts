@@ -4,11 +4,15 @@ import { config } from '../config';
 let transporter: nodemailer.Transporter | null = null;
 
 if (config.email.user && config.email.pass) {
+  const isPort465 = config.email.port === 465;
   transporter = nodemailer.createTransport({
     host: config.email.host,
     port: config.email.port,
-    secure: config.email.port === 465,
+    secure: isPort465,
     family: 4, // Force IPv4 to prevent Railway Docker IPv6 ENETUNREACH errors
+    connectionTimeout: 10000,
+    greetingTimeout: 10000,
+    socketTimeout: 10000,
     auth: {
       user: config.email.user,
       pass: config.email.pass,
