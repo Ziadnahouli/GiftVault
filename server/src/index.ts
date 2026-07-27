@@ -34,16 +34,34 @@ const app = express();
 // Trust Railway's reverse proxy (required for rate limiting behind a proxy)
 app.set('trust proxy', 1);
 
-// Enable CORS for all routes and preflight OPTIONS requests
+// Failproof CORS Middleware - must be the VERY FIRST middleware
+app.use((req, res, next) => {
+  const origin = req.headers.origin;
+  if (origin) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+  } else {
+    res.setHeader('Access-Control-Allow-Origin', '*');
+  }
+  res.setHeader('Access-Control-Allow-Credentials', 'true');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization, x-session-token');
+
+  // Immediately fulfill OPTIONS preflight requests
+  if (req.method === 'OPTIONS') {
+    res.status(204).end();
+    return;
+  }
+  next();
+});
+
 const corsOptions = {
-  origin: true, // Echoes back the requesting origin (e.g. https://gift-vault.me)
+  origin: true,
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'x-session-token', 'X-Requested-With', 'Accept'],
 };
 
 app.use(cors(corsOptions));
-app.options('*', cors(corsOptions));
 
 // Block traffic briefly during live database replace/restore
 app.use(maintenanceGuard);
@@ -59,7 +77,7 @@ app.use(
 // Rate limiting
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // limit each IP to 100 requests per windowMs
+  max: 500, // limit each IP to 500 requests per 15 minutes
   message: { error: 'Too many requests, please try again later.' },
   standardHeaders: true,
   legacyHeaders: false,
@@ -67,7 +85,7 @@ const limiter = rateLimit({
 
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 20,
+  max: 100, // limit each IP to 100 auth attempts per 15 minutes
   message: { error: 'Too many auth attempts, please try again later.' },
 });
 
