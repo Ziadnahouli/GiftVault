@@ -86,7 +86,11 @@ export default function RegisterPage() {
       toast.success(`SMS OTP sent to ${cleanPhone}`);
     } catch (err: any) {
       console.error('Firebase SMS error:', err);
-      toast.error(`Firebase SMS error: ${err?.message || 'Failed to send SMS'}`);
+      if (err?.code === 'auth/billing-not-enabled') {
+        toast.error('Firebase SMS requires adding your phone under "Phone numbers for testing" in Firebase Console (or enabling Blaze plan).', { duration: 6000 });
+      } else {
+        toast.error(`Firebase SMS note: ${err?.message || 'Failed to send SMS'}`);
+      }
     }
   };
 
