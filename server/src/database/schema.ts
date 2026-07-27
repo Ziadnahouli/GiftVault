@@ -28,10 +28,17 @@ if (!fs.existsSync(dbDir)) {
 let _db: BetterSqlite3Database = openDatabaseConnection(getResolvedDbPath());
 
 function openDatabaseConnection(dbPath: string): BetterSqlite3Database {
-  const database = new Database(dbPath);
-  database.pragma('journal_mode = WAL');
-  database.pragma('foreign_keys = ON');
-  return database;
+  try {
+    const database = new Database(dbPath);
+    try { database.pragma('journal_mode = WAL'); } catch {}
+    try { database.pragma('foreign_keys = ON'); } catch {}
+    return database;
+  } catch (err: any) {
+    console.error(`⚠️ Could not open SQLite database file at "${dbPath}": ${err.message}. Using fallback in-memory SQLite.`);
+    const fallbackDb = new Database(':memory:');
+    try { fallbackDb.pragma('foreign_keys = ON'); } catch {}
+    return fallbackDb;
+  }
 }
 
 /**
