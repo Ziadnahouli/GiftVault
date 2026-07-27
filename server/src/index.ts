@@ -124,7 +124,7 @@ app.use((err: any, req: express.Request, res: express.Response, next: express.Ne
 // ==================== START ====================
 
 async function start() {
-  app.listen(config.port, () => {
+  app.listen(config.port, '0.0.0.0', () => {
     console.log(`🚀 GiftVault API running on port ${config.port}`);
     console.log(`📋 Environment: ${config.nodeEnv}`);
     console.log(`🌐 Client URL: ${config.clientUrl}`);
