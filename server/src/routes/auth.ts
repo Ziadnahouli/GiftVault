@@ -24,6 +24,7 @@ import {
   sendPhoneChangedNotification,
   sendNewLoginAlert,
 } from '../services/emailService';
+import { sendPhoneOTP } from '../services/smsService';
 import {
   createSession,
   revokeSession,
@@ -179,7 +180,9 @@ router.post('/register', async (req: AuthRequest, res: Response) => {
     if (method === 'phone') {
       verificationType = 'phone';
       verificationCode = generateNumericAuthToken(userId, 'phone_otp', undefined, 15);
-      console.log(`📱 [PHONE OTP CODE FOR ${cleanPhone}]: ${verificationCode}`);
+      sendPhoneOTP(cleanPhone || '', verificationCode).catch((err) => {
+        console.error(`❌ Error sending Phone OTP to ${cleanPhone}:`, err?.message || err);
+      });
       message = `Registration successful! A 6-digit OTP code has been sent to ${cleanPhone}. Please verify your phone number to complete registration.`;
     } else {
       verificationType = 'email';
@@ -544,13 +547,12 @@ router.post('/resend-code', async (req: AuthRequest, res: Response) => {
     let newCode = '';
     if (resendType === 'phone') {
       newCode = generateNumericAuthToken(user.id, 'phone_otp', undefined, 15);
-      console.log(`📱 [RESEND PHONE OTP FOR ${user.phone_number}]: ${newCode}`);
+      sendPhoneOTP(user.phone_number || user.whatsapp, newCode).catch((err) => {
+        console.error(`❌ Error resending Phone OTP to ${user.phone_number}:`, err?.message || err);
+      });
     } else {
       newCode = generateNumericAuthToken(user.id, 'email_verification', undefined, 1440);
-      const linkToken = generateAuthToken(user.id, 'email_verification', undefined, 24);
-      const verificationLink = `${config.clientUrl}/verify-email?token=${linkToken}`;
 
-      sendVerificationEmail(user.name, user.email, verificationLink).catch(() => {});
       sendVerificationCodeEmail(user.name, user.email, newCode).catch((err) => {
         console.error(`❌ Error resending verification code email to ${user.email}:`, err?.message || err);
       });
