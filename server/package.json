@@ -7,7 +7,7 @@
     "dev": "ts-node-dev --respawn --transpile-only src/index.ts",
     "build": "tsc",
     "prestart": "npm run build",
-    "start": "node dist/index.js",
+    "start": "if [ -f dist/index.js ]; then node dist/index.js; elif [ -f server/dist/index.js ]; then node server/dist/index.js; else node dist/index.js; fi",
     "seed": "ts-node src/database/seed.ts"
   },
   "dependencies": {
