@@ -63,14 +63,19 @@ export async function sendPhoneOTP(phoneNumber: string, code: string): Promise<b
     }
   }
 
-  // 3. Callmebot Free WhatsApp API Fallback
+  // 1. Callmebot Free WhatsApp API Dispatch
   if (CALLMEBOT_API_KEY) {
     try {
-      const callmebotUrl = `https://api.callmebot.com/whatsapp.php?phone=${encodeURIComponent(cleanPhone)}&text=${encodeURIComponent(messageBody)}&apikey=${encodeURIComponent(CALLMEBOT_API_KEY)}`;
+      const digitsOnly = cleanPhone.replace(/\D/g, '');
+      const callmebotPhone = process.env.CALLMEBOT_PHONE || digitsOnly;
+      const callmebotUrl = `https://api.callmebot.com/whatsapp.php?phone=${encodeURIComponent(callmebotPhone)}&text=${encodeURIComponent(messageBody)}&apikey=${encodeURIComponent(CALLMEBOT_API_KEY)}`;
       const response = await fetch(callmebotUrl);
-      if (response.ok) {
-        console.log(`📱 [CALLMEBOT WHATSAPP SUCCESS] Dispatched free WhatsApp OTP to ${cleanPhone}`);
+      const respText = await response.text();
+      if (response.ok && (respText.includes('Message queued') || respText.includes('Message sent') || respText.includes('OK') || response.status === 200)) {
+        console.log(`📱 [CALLMEBOT WHATSAPP SUCCESS] Dispatched free WhatsApp OTP code ${code} to ${callmebotPhone}`);
         return true;
+      } else {
+        console.warn(`⚠️ [CALLMEBOT API RESPONSE] ${respText}`);
       }
     } catch (err: any) {
       console.error(`❌ [CALLMEBOT EXCEPTION] Error sending WhatsApp to ${cleanPhone}:`, err?.message || err);

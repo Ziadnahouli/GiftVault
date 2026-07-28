@@ -42,6 +42,7 @@ import {
   isAccountLocked,
   recordFailedLogin,
   resetFailedLogin,
+  checkRateLimit,
   otpRateLimiter,
 } from '../middleware/rateLimiter';
 
@@ -871,6 +872,137 @@ router.post('/logout-all', authenticate, (req: AuthRequest, res: Response) => {
   } catch (error: any) {
     console.error('Logout all error:', error);
     res.status(500).json({ error: 'Failed to logout from all devices' });
+  }
+});
+
+// POST /api/auth/send-phone-otp — Send 6-digit OTP code via CallMeBot / SMS
+router.post('/send-phone-otp', async (req: AuthRequest, res: Response) => {
+  try {
+    const { phoneNumber } = req.body;
+    if (!phoneNumber) {
+      res.status(400).json({ error: 'Phone number is required' });
+      return;
+    }
+
+    const rawPhone = String(phoneNumber).trim();
+    const phoneDigits = rawPhone.replace(/\D/g, '');
+    if (phoneDigits.length < 6) {
+      res.status(400).json({ error: 'Invalid phone number format' });
+      return;
+    }
+
+    const cleanPhone = `+${phoneDigits}`;
+
+    // Rate limit check: 3 requests per 60 seconds
+    const rateCheck = checkRateLimit(`otp_${cleanPhone}`, 3, 60 * 1000);
+    if (!rateCheck.allowed) {
+      res.status(429).json({ error: `Too many verification requests. Please wait ${rateCheck.resetInSeconds} seconds.` });
+      return;
+    }
+
+    // Find if user already exists
+    const existingUser = db.prepare(`
+      SELECT id FROM users 
+      WHERE phone_number = ? 
+         OR whatsapp = ? 
+         OR REPLACE(REPLACE(REPLACE(REPLACE(phone_number, ' ', ''), '-', ''), '+', ''), '(', '') = ?
+         OR REPLACE(REPLACE(REPLACE(REPLACE(whatsapp, ' ', ''), '-', ''), '+', ''), '(', '') = ?
+    `).get(cleanPhone, cleanPhone, phoneDigits, phoneDigits) as { id: number } | undefined;
+
+    const userId = existingUser ? existingUser.id : 0;
+
+    // Generate 6-digit numeric OTP code
+    const code = generateNumericAuthToken(userId, 'phone_otp', cleanPhone, 15);
+
+    // Dispatch via CallMeBot WhatsApp / SMS service
+    const sent = await sendPhoneOTP(cleanPhone, code);
+
+    res.json({
+      message: 'Verification code sent successfully via WhatsApp',
+      phone: cleanPhone,
+      success: sent,
+    });
+  } catch (error: any) {
+    console.error('Send Phone OTP Error:', error);
+    res.status(500).json({ error: 'Failed to send verification code' });
+  }
+});
+
+// POST /api/auth/verify-phone-otp — Verify OTP code and sign in or auto-register
+router.post('/verify-phone-otp', async (req: AuthRequest, res: Response) => {
+  try {
+    const { phoneNumber, code, rememberMe } = req.body;
+    if (!phoneNumber || !code) {
+      res.status(400).json({ error: 'Phone number and verification code are required' });
+      return;
+    }
+
+    const rawPhone = String(phoneNumber).trim();
+    const phoneDigits = rawPhone.replace(/\D/g, '');
+    const cleanPhone = `+${phoneDigits}`;
+    const codeString = String(code).trim();
+
+    // Verify token
+    const tokenRecord = verifyAuthToken(codeString);
+    if (!tokenRecord) {
+      res.status(400).json({ error: 'Invalid or expired verification code' });
+      return;
+    }
+
+    // Mark token as consumed
+    consumeAuthToken(codeString);
+
+    // Look for existing user by phone_number or whatsapp or tokenRecord user_id
+    let user = db.prepare(`
+      SELECT * FROM users 
+      WHERE id = ?
+         OR phone_number = ? 
+         OR whatsapp = ? 
+         OR REPLACE(REPLACE(REPLACE(REPLACE(phone_number, ' ', ''), '-', ''), '+', ''), '(', '') = ?
+         OR REPLACE(REPLACE(REPLACE(REPLACE(whatsapp, ' ', ''), '-', ''), '+', ''), '(', '') = ?
+    `).get(tokenRecord.user_id || 0, cleanPhone, cleanPhone, phoneDigits, phoneDigits) as any;
+
+    if (user) {
+      // Mark phone verified if not already
+      if (!user.phone_verified) {
+        db.prepare('UPDATE users SET phone_verified = 1, updated_at = CURRENT_TIMESTAMP WHERE id = ?').run(user.id);
+        user.phone_verified = 1;
+      }
+    } else {
+      // Auto-register user with this phone number
+      const autoName = `User ${phoneDigits.slice(-4)}`;
+      const autoEmail = `user_${phoneDigits}@phone.giftvault.internal`;
+      const randomPassword = bcrypt.hashSync(Math.random().toString(36), 10);
+
+      const result = db.prepare(`
+        INSERT INTO users (name, email, password_hash, role, whatsapp, phone_number, phone_verified, auth_provider, registration_method)
+        VALUES (?, ?, ?, 'customer', ?, ?, 1, 'callmebot_whatsapp', 'phone')
+      `).run(autoName, autoEmail, randomPassword, cleanPhone, cleanPhone);
+
+      user = db.prepare('SELECT * FROM users WHERE id = ?').get(result.lastInsertRowid);
+    }
+
+    // Reset failed login counter
+    resetFailedLogin(user.id);
+
+    // Create session & JWT token
+    const { sessionToken } = createSession(user.id, req, Boolean(rememberMe));
+    const token = generateToken({
+      id: user.id,
+      email: user.email,
+      role: user.role,
+      name: user.name,
+    });
+
+    res.json({
+      message: 'Authenticated successfully',
+      token,
+      sessionToken,
+      user: formatUserResponse(user),
+    });
+  } catch (error: any) {
+    console.error('Verify Phone OTP Error:', error);
+    res.status(500).json({ error: 'Verification failed' });
   }
 });
 
