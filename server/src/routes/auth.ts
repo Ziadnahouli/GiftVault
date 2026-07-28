@@ -287,7 +287,7 @@ router.post('/login', async (req: AuthRequest, res: Response) => {
       browser: uaInfo.browser,
       os: uaInfo.os,
       time: new Date().toLocaleString(),
-    }).catch(() => {});
+    }).catch(() => { });
 
     res.json({
       message: 'Login successful',
@@ -389,7 +389,7 @@ router.post('/firebase-login', async (req: AuthRequest, res: Response) => {
 
       user = db.prepare('SELECT * FROM users WHERE id = ?').get(result.lastInsertRowid);
       if (cleanEmail) {
-        sendWelcomeEmail(sanitize(displayName), cleanEmail).catch(() => {});
+        sendWelcomeEmail(sanitize(displayName), cleanEmail).catch(() => { });
       }
     }
 
@@ -497,10 +497,10 @@ router.post('/verify-code', async (req: AuthRequest, res: Response) => {
     if (tokenRecord.type === 'email_verification') {
       db.prepare('UPDATE users SET email_verified = 1, updated_at = CURRENT_TIMESTAMP WHERE id = ?').run(user.id);
       // Send Welcome Email ONLY after verification succeeds
-      sendWelcomeEmail(user.name, user.email).catch(() => {});
+      sendWelcomeEmail(user.name, user.email).catch(() => { });
     } else if (tokenRecord.type === 'phone_otp') {
       db.prepare('UPDATE users SET phone_verified = 1, updated_at = CURRENT_TIMESTAMP WHERE id = ?').run(user.id);
-      sendWelcomeEmail(user.name, user.email).catch(() => {});
+      sendWelcomeEmail(user.name, user.email).catch(() => { });
     }
 
     consumeAuthToken(cleanCode);
@@ -608,7 +608,7 @@ router.post('/forgot-password', async (req: AuthRequest, res: Response) => {
     if (user && user.is_active) {
       const resetToken = generateAuthToken(user.id, 'password_reset', undefined, 1);
       const resetLink = `${config.clientUrl}/reset-password?token=${resetToken}`;
-      sendPasswordResetEmail(user.name, cleanEmail, resetLink).catch(() => {});
+      sendPasswordResetEmail(user.name, cleanEmail, resetLink).catch(() => { });
     }
 
     res.json({ message: 'If an account exists with that email, a password reset link has been sent.' });
@@ -792,9 +792,9 @@ router.post('/change-email', authenticate, async (req: AuthRequest, res: Respons
 
     const verifyToken = generateAuthToken(userId, 'email_verification', undefined, 24);
     const verificationLink = `${config.clientUrl}/verify-email?token=${verifyToken}`;
-    
-    sendEmailChangedNotification(user.name, oldEmail, cleanNewEmail).catch(() => {});
-    sendVerificationEmail(user.name, cleanNewEmail, verificationLink).catch(() => {});
+
+    sendEmailChangedNotification(user.name, oldEmail, cleanNewEmail).catch(() => { });
+    sendVerificationEmail(user.name, cleanNewEmail, verificationLink).catch(() => { });
 
     const updatedUser = db.prepare('SELECT * FROM users WHERE id = ?').get(userId);
 
@@ -900,8 +900,8 @@ router.post('/send-phone-otp', async (req: AuthRequest, res: Response) => {
       return;
     }
 
-    // Find if user already exists
-    const existingUser = db.prepare(`
+    // Find or create user for Foreign Key constraint integrity in auth_tokens
+    let existingUser = db.prepare(`
       SELECT id FROM users 
       WHERE phone_number = ? 
          OR whatsapp = ? 
@@ -909,7 +909,21 @@ router.post('/send-phone-otp', async (req: AuthRequest, res: Response) => {
          OR REPLACE(REPLACE(REPLACE(REPLACE(whatsapp, ' ', ''), '-', ''), '+', ''), '(', '') = ?
     `).get(cleanPhone, cleanPhone, phoneDigits, phoneDigits) as { id: number } | undefined;
 
-    const userId = existingUser ? existingUser.id : 0;
+    let userId: number;
+    if (existingUser) {
+      userId = existingUser.id;
+    } else {
+      const autoName = `User ${phoneDigits.slice(-4)}`;
+      const autoEmail = `user_${phoneDigits}@phone.giftvault.internal`;
+      const randomPassword = bcrypt.hashSync(Math.random().toString(36), 10);
+
+      const result = db.prepare(`
+        INSERT INTO users (name, email, password_hash, role, whatsapp, phone_number, phone_verified, auth_provider, registration_method)
+        VALUES (?, ?, ?, 'customer', ?, ?, 0, 'callmebot_whatsapp', 'phone')
+      `).run(autoName, autoEmail, randomPassword, cleanPhone, cleanPhone);
+
+      userId = Number(result.lastInsertRowid);
+    }
 
     // Generate 6-digit numeric OTP code
     const code = generateNumericAuthToken(userId, 'phone_otp', cleanPhone, 15);
