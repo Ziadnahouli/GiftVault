@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { Star, ShieldCheck, Zap, AlertCircle, ShoppingCart } from 'lucide-react';
 import { toast } from 'react-hot-toast';
-import { fetchApi } from '@/lib/api';
+import { fetchApi, getImageUrl } from '@/lib/api';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useCurrency } from '@/contexts/CurrencyContext';
 import { useCart } from '@/contexts/CartContext';
@@ -153,7 +153,7 @@ export default function ProductPage() {
             <div className="lg:col-span-5 space-y-4">
               <div className="glass-card aspect-[3/4] md:aspect-square relative overflow-hidden flex items-center justify-center p-8">
                 {product.image ? (
-                  <img src={product.image} alt={title} className="w-full h-full object-contain rounded-xl drop-shadow-2xl" />
+                  <img src={getImageUrl(product.image)} alt={title} className="w-full h-full object-contain rounded-xl drop-shadow-2xl" />
                 ) : (
                   <div className="text-dark-500">No Image</div>
                 )}

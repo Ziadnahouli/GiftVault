@@ -7,6 +7,7 @@ import { X, Trash2, ShoppingBag, ArrowRight } from 'lucide-react';
 import { useCart } from '@/contexts/CartContext';
 import { useCurrency } from '@/contexts/CurrencyContext';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { getImageUrl } from '@/lib/api';
 
 export function CartDrawer() {
   const { isCartOpen, setIsCartOpen, items, updateQuantity, removeFromCart, subtotalUsd } = useCart();
@@ -78,7 +79,7 @@ export function CartDrawer() {
                   {/* Image */}
                   <div className="w-20 h-24 bg-dark-800 rounded-lg flex-shrink-0 relative overflow-hidden border border-white/5">
                     {item.image ? (
-                      <img src={item.image} alt={item.productNameEn} className="w-full h-full object-cover" />
+                      <img src={getImageUrl(item.image)} alt={item.productNameEn} className="w-full h-full object-cover" />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center text-xs text-dark-500">No Image</div>
                     )}

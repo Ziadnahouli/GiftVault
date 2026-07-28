@@ -4,7 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Save, ArrowLeft, Plus, Trash2, Settings, Globe, Copy, Eye, EyeOff } from 'lucide-react';
 import { toast } from 'react-hot-toast';
-import { fetchApi } from '@/lib/api';
+import { fetchApi, getImageUrl } from '@/lib/api';
 import Link from 'next/link';
 import { Skeleton } from '@/components/ui/Skeleton';
 
@@ -183,7 +183,7 @@ export default function ProductEditor({ params }: { params: { id: string } }) {
                 <input type="text" placeholder="Image URL" value={formData.image} onChange={e => setFormData({...formData, image: e.target.value})} className="input-field mb-4" />
                 {formData.image ? (
                   <div className="w-full aspect-square rounded-xl bg-dark-900 overflow-hidden border border-dark-800">
-                    <img src={formData.image} alt="Preview" className="w-full h-full object-cover" />
+                    <img src={getImageUrl(formData.image)} alt="Preview" className="w-full h-full object-cover" />
                   </div>
                 ) : (
                   <div className="w-full aspect-square rounded-xl bg-dark-900 border border-dark-800 flex items-center justify-center text-dark-500">

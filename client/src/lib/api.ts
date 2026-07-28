@@ -1,5 +1,15 @@
 export const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
 
+export function getImageUrl(url?: string): string {
+  if (!url) return '';
+  if (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('data:')) {
+    return url;
+  }
+  const backendBase = API_URL.replace(/\/api\/?$/, '');
+  const cleanPath = url.startsWith('/') ? url : `/${url}`;
+  return `${backendBase}${cleanPath}`;
+}
+
 function clearAuthAndRedirect() {
   if (typeof window === 'undefined') return;
   localStorage.removeItem('token');

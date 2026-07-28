@@ -1,9 +1,10 @@
-import React from 'react';
+import React, { useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { Star, ShoppingCart } from 'lucide-react';
+import { Star, ShoppingCart, Gift } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useCurrency } from '@/contexts/CurrencyContext';
+import { getImageUrl } from '@/lib/api';
 
 interface ProductCardProps {
   product: {
@@ -23,10 +24,12 @@ interface ProductCardProps {
 export function ProductCard({ product }: ProductCardProps) {
   const { language } = useLanguage();
   const { formatPrice } = useCurrency();
+  const [imageError, setImageError] = useState(false);
 
   const name = language === 'ar' ? product.name_ar : product.name_en;
   const categoryName = language === 'ar' ? product.category_name_ar : product.category_name_en;
   const rating = product.avg_rating || 0;
+  const imageUrl = getImageUrl(product.image);
 
   return (
     <Link href={`/product/${product.slug}`} aria-label={`View ${name} gift card details`} className="group block h-full">
@@ -35,18 +38,17 @@ export function ProductCard({ product }: ProductCardProps) {
         <div className="relative aspect-[3/4] w-full overflow-hidden bg-dark-900">
           <div className="absolute inset-0 bg-gradient-to-t from-dark-900 to-transparent z-10 opacity-60"></div>
           
-          {product.image ? (
-            <Image 
-              src={product.image} 
+          {imageUrl && !imageError ? (
+            <img 
+              src={imageUrl} 
               alt={name}
-              fill
-              sizes="(max-width: 768px) 50vw, (max-width: 1200px) 33vw, 25vw"
-              loading="lazy"
+              onError={() => setImageError(true)}
               className="object-cover w-full h-full transform group-hover:scale-105 transition-transform duration-500"
             />
           ) : (
-            <div className="w-full h-full flex items-center justify-center bg-dark-800 text-dark-300">
-              No Image
+            <div className="w-full h-full flex flex-col items-center justify-center bg-gradient-to-br from-dark-800 to-dark-900 text-dark-300 gap-2 p-4 text-center">
+              <Gift className="w-10 h-10 text-primary-400 opacity-60" />
+              <span className="text-xs font-semibold text-dark-200">{name}</span>
             </div>
           )}
 

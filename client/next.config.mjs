@@ -14,6 +14,7 @@ const nextConfig = {
     optimizePackageImports: ['lucide-react', 'framer-motion', 'react-hot-toast', 'recharts'],
   },
   images: {
+    unoptimized: true,
     formats: ['image/avif', 'image/webp'],
     minimumCacheTTL: 604800,
     remotePatterns: [

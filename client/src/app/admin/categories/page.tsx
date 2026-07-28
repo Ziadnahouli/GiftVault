@@ -1,10 +1,10 @@
 "use client";
 
 import React, { useEffect, useState } from 'react';
-import { fetchApi } from '@/lib/api';
+import { fetchApi, getImageUrl } from '@/lib/api';
 import { Badge } from '@/components/ui/Badge';
 import { Skeleton } from '@/components/ui/Skeleton';
-import { Plus, Edit, Trash2, Search, X, Check, XCircle } from 'lucide-react';
+import { Plus, Edit, Trash2, Search, X, Check, XCircle, Image as ImageIcon } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 
 export default function AdminCategoriesPage() {
@@ -20,6 +20,7 @@ export default function AdminCategoriesPage() {
     name_en: '',
     name_ar: '',
     icon: '',
+    image: '',
     description_en: '',
     description_ar: '',
     sort_order: 0,
@@ -51,6 +52,7 @@ export default function AdminCategoriesPage() {
       name_en: cat.name_en,
       name_ar: cat.name_ar,
       icon: cat.icon || '',
+      image: cat.image || '',
       description_en: cat.description_en || '',
       description_ar: cat.description_ar || '',
       sort_order: cat.sort_order || 0,
@@ -153,7 +155,11 @@ export default function AdminCategoriesPage() {
                   <tr key={cat.id} className="hover:bg-dark-800/50 transition-colors">
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-lg bg-dark-800 flex items-center justify-center text-primary-400 shrink-0 border border-dark-700 text-xl" dangerouslySetInnerHTML={{ __html: cat.icon || '' }} />
+                        {cat.image ? (
+                          <img src={getImageUrl(cat.image)} alt={cat.name_en} className="w-10 h-10 rounded-lg object-cover border border-dark-700 shrink-0" />
+                        ) : (
+                          <div className="w-10 h-10 rounded-lg bg-dark-800 flex items-center justify-center text-primary-400 shrink-0 border border-dark-700 text-xl" dangerouslySetInnerHTML={{ __html: cat.icon || '' }} />
+                        )}
                         <div>
                           <div className="font-bold text-white">{cat.name_en}</div>
                           <div className="text-xs text-dark-400">{cat.name_ar}</div>
@@ -225,6 +231,16 @@ export default function AdminCategoriesPage() {
                   <label className="block text-sm font-medium text-dark-300 mb-1">Name (Arabic)</label>
                   <input type="text" value={formData.name_ar} onChange={e => setFormData({...formData, name_ar: e.target.value})} className="input-field text-right" dir="rtl" />
                 </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-dark-300 mb-1">Category Image URL</label>
+                <input type="text" placeholder="https://example.com/category.jpg" value={formData.image} onChange={e => setFormData({...formData, image: e.target.value})} className="input-field mb-2" />
+                {formData.image && (
+                  <div className="relative aspect-video w-full rounded-lg overflow-hidden border border-dark-700 bg-dark-900">
+                    <img src={getImageUrl(formData.image)} alt="Category Preview" className="w-full h-full object-cover" />
+                  </div>
+                )}
               </div>
 
               <div>

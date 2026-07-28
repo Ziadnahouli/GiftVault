@@ -7,7 +7,7 @@ import { ShoppingBag, ArrowRight, ShieldCheck } from 'lucide-react';
 import { useCart } from '@/contexts/CartContext';
 import { useCurrency } from '@/contexts/CurrencyContext';
 import { useLanguage } from '@/contexts/LanguageContext';
-import { fetchApi } from '@/lib/api';
+import { fetchApi, getImageUrl } from '@/lib/api';
 import { toast } from 'react-hot-toast';
 import { Navbar } from '@/components/layout/Navbar';
 import { Footer } from '@/components/layout/Footer';
@@ -241,7 +241,7 @@ export default function CheckoutPage() {
                   <div key={item.id} className="flex gap-4">
                     <div className="w-16 h-20 bg-dark-800 rounded-lg shrink-0 overflow-hidden">
                       {item.image ? (
-                        <img src={item.image} alt={item.productNameEn} className="w-full h-full object-cover" />
+                        <img src={getImageUrl(item.image)} alt={item.productNameEn} className="w-full h-full object-cover" />
                       ) : null}
                     </div>
                     <div className="flex-grow">

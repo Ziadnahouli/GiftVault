@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { Plus, Search, Edit, Trash2, Copy, Eye, EyeOff } from 'lucide-react';
 import { toast } from 'react-hot-toast';
-import { fetchApi } from '@/lib/api';
+import { fetchApi, getImageUrl } from '@/lib/api';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { useCurrency } from '@/contexts/CurrencyContext';
 import { Badge } from '@/components/ui/Badge';
@@ -124,7 +124,7 @@ export default function AdminProductsPage() {
                       <div className="flex items-center gap-3">
                         <div className="w-10 h-10 rounded-lg bg-dark-800 overflow-hidden shrink-0 border border-dark-700">
                           {product.image ? (
-                            <img src={product.image} alt={product.name_en} className="w-full h-full object-cover" />
+                            <img src={getImageUrl(product.image)} alt={product.name_en} className="w-full h-full object-cover" />
                           ) : null}
                         </div>
                         <div>

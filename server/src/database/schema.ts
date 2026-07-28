@@ -401,12 +401,14 @@ export function initializeDatabase(): void {
     CREATE INDEX IF NOT EXISTS idx_wishlist_user ON wishlist(user_id);
     CREATE INDEX IF NOT EXISTS idx_database_audit_log_created ON database_audit_log(created_at);
     CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
-    CREATE INDEX IF NOT EXISTS idx_users_phone ON users(phone_number);
-    CREATE INDEX IF NOT EXISTS idx_users_firebase ON users(firebase_uid);
     CREATE INDEX IF NOT EXISTS idx_auth_tokens_lookup ON auth_tokens(token, type);
     CREATE INDEX IF NOT EXISTS idx_user_sessions_token ON user_sessions(session_token);
-    CREATE INDEX IF NOT EXISTS idx_inventory_lookup ON inventory_codes(product_id, is_used);
   `);
+
+  try { _db.exec(`CREATE INDEX IF NOT EXISTS idx_users_phone ON users(phone_number);`); } catch {}
+  try { _db.exec(`CREATE INDEX IF NOT EXISTS idx_users_firebase ON users(firebase_uid);`); } catch {}
+
+  runMigrations();
 }
 
 /**
@@ -431,7 +433,10 @@ function migrateUsersRoleConstraint(): void {
   }
 
   _db.pragma('foreign_keys = OFF');
-  const migrate = _db.transaction(() => {
+  try {
+    const columns = (_db.pragma('table_info(users)') as any[]).map(c => c.name);
+    const colList = columns.join(', ');
+
     _db.exec(`
       CREATE TABLE users_new (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -445,27 +450,34 @@ function migrateUsersRoleConstraint(): void {
         preferred_lang TEXT DEFAULT 'en',
         preferred_currency TEXT DEFAULT 'USD',
         is_active INTEGER DEFAULT 1,
+        firebase_uid TEXT UNIQUE,
+        phone_number TEXT UNIQUE,
+        email_verified INTEGER DEFAULT 0,
+        phone_verified INTEGER DEFAULT 0,
+        account_status TEXT DEFAULT 'active',
+        last_login DATETIME,
+        failed_login_attempts INTEGER DEFAULT 0,
+        locked_until DATETIME,
+        remember_me_token TEXT,
+        auth_provider TEXT DEFAULT 'local',
+        registration_method TEXT DEFAULT 'email',
+        notification_settings TEXT DEFAULT '{"email":true,"sms":true,"security":true}',
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
       );
 
-      INSERT INTO users_new (
-        id, name, email, password_hash, role, avatar, country, whatsapp,
-        preferred_lang, preferred_currency, is_active, created_at, updated_at
-      )
-      SELECT
-        id, name, email, password_hash, role, avatar, country, whatsapp,
-        preferred_lang, preferred_currency, is_active, created_at, updated_at
-      FROM users;
+      INSERT INTO users_new (${colList})
+      SELECT ${colList} FROM users;
 
       DROP TABLE users;
       ALTER TABLE users_new RENAME TO users;
     `);
-  });
-
-  migrate();
-  _db.pragma('foreign_keys = ON');
-  console.log('✅ Migrated users role constraint to include super_admin');
+    console.log('✅ Migrated users role constraint to include super_admin');
+  } catch (e: any) {
+    console.warn('⚠️ Migration notice:', e.message);
+  } finally {
+    _db.pragma('foreign_keys = ON');
+  }
 }
 
 /**
