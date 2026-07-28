@@ -16,7 +16,7 @@ export function Navbar() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   return (
-    <nav className="sticky top-0 z-50 w-full bg-dark-950/95 backdrop-blur-md border-b border-dark-800/80 shadow-xl max-w-full overflow-x-hidden">
+    <nav className="sticky top-0 z-50 w-full bg-dark-950/95 backdrop-blur-md border-b border-dark-800/80 shadow-xl">
       <div className="page-container">
         <div className="flex items-center justify-between h-20">
           
