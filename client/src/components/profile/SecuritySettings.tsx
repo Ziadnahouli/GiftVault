@@ -150,7 +150,7 @@ export function SecuritySettings() {
 
   const handlePhoneSuccess = async (idToken?: string) => {
     try {
-      const res = await fetchApi('/auth/verify-phone-otp', {
+      const res = await fetchApi('/auth/verify-profile-phone', {
         method: 'POST',
         body: JSON.stringify({ phoneNumber: newPhone, idToken }),
       });

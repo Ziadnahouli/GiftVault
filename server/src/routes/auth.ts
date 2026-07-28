@@ -649,8 +649,8 @@ router.post('/reset-password', async (req: AuthRequest, res: Response) => {
   }
 });
 
-// POST /api/auth/verify-phone-otp
-router.post('/verify-phone-otp', authenticate, otpRateLimiter, async (req: AuthRequest, res: Response) => {
+// POST /api/auth/verify-profile-phone (Authenticated Profile Phone Update)
+router.post('/verify-profile-phone', authenticate, otpRateLimiter, async (req: AuthRequest, res: Response) => {
   try {
     const { phoneNumber, idToken } = req.body;
     const userId = req.user!.id;
