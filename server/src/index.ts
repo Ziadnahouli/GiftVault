@@ -25,6 +25,7 @@ import couponRoutes from './routes/coupons';
 import adminRoutes from './routes/admin';
 import inventoryRoutes from './routes/inventory';
 import databaseRoutes from './routes/database';
+import imageSearchRoutes from './routes/imageSearch';
 import { maintenanceGuard } from './middleware/maintenance';
 
 const app = express();
@@ -104,6 +105,7 @@ app.use('/api/coupons', couponRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/admin/inventory', inventoryRoutes);
 app.use('/api/admin/database', databaseRoutes);
+app.use('/api/admin/images', imageSearchRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {

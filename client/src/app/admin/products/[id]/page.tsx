@@ -7,7 +7,7 @@ import { toast } from 'react-hot-toast';
 import { fetchApi, getImageUrl } from '@/lib/api';
 import Link from 'next/link';
 import { Skeleton } from '@/components/ui/Skeleton';
-import { ProductImagePicker } from '@/components/admin/ProductImagePicker';
+import { AIImageSearchModal } from '@/components/admin/AIImageSearchModal';
 
 export default function ProductEditor({ params }: { params: { id: string } }) {
   const isNew = params.id === 'new';
@@ -179,17 +179,17 @@ export default function ProductEditor({ params }: { params: { id: string } }) {
             </div>
             
             <div className="glass-card p-6 space-y-4">
-              <h2 className="text-lg font-bold text-white border-b border-dark-800 pb-4">Main Image</h2>
+              <h2 className="text-lg font-bold text-white border-b border-dark-800 pb-4">Main Cover Image</h2>
               <div className="space-y-4">
-                <ProductImagePicker
+                <AIImageSearchModal
                   productName={formData.name_en}
                   currentImage={formData.image}
-                  onSelectImage={(url) => setFormData({ ...formData, image: url })}
+                  onSelectImage={(localPath) => setFormData({ ...formData, image: localPath })}
                 />
                 
                 <div>
-                  <label className="block text-xs font-semibold text-dark-400 uppercase tracking-wider mb-1">Image URL</label>
-                  <input type="text" placeholder="https://..." value={formData.image} onChange={e => setFormData({...formData, image: e.target.value})} className="input-field" />
+                  <label className="block text-xs font-semibold text-dark-400 uppercase tracking-wider mb-1">Local Image Path</label>
+                  <input type="text" placeholder="/uploads/products/..." value={formData.image} onChange={e => setFormData({...formData, image: e.target.value})} className="input-field" />
                 </div>
 
                 {formData.image ? (

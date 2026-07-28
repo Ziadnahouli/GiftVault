@@ -372,6 +372,20 @@ export function initializeDatabase(): void {
       updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
     );
 
+    -- Downloaded Images cache table
+    CREATE TABLE IF NOT EXISTS downloaded_images (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      original_url TEXT UNIQUE NOT NULL,
+      provider TEXT NOT NULL,
+      local_path TEXT NOT NULL,
+      thumbnail_path TEXT,
+      width INTEGER,
+      height INTEGER,
+      file_size INTEGER,
+      photographer TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
+
     -- Database management audit log
     CREATE TABLE IF NOT EXISTS database_audit_log (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
