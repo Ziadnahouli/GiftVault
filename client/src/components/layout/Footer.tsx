@@ -138,22 +138,22 @@ export function Footer() {
               Instant digital delivery via WhatsApp after safe payment verification.
             </p>
 
-            <div className="flex flex-wrap gap-2 pt-1">
-              <span className="px-3 py-1.5 bg-dark-900 border border-dark-700 text-white rounded-lg text-[11px] font-bold tracking-wider">
-                VISA
-              </span>
-              <span className="px-3 py-1.5 bg-dark-900 border border-dark-700 text-white rounded-lg text-[11px] font-bold tracking-wider">
-                MASTERCARD
-              </span>
-              <span className="px-3 py-1.5 bg-dark-900 border border-dark-700 text-emerald-400 rounded-lg text-[11px] font-bold tracking-wider">
-                WHISH MONEY
-              </span>
-              <span className="px-3 py-1.5 bg-dark-900 border border-dark-700 text-amber-400 rounded-lg text-[11px] font-bold tracking-wider">
-                OMT
-              </span>
-              <span className="px-3 py-1.5 bg-dark-900 border border-dark-700 text-cyan-400 rounded-lg text-[11px] font-bold tracking-wider">
-                USDT / CRYPTO
-              </span>
+            <div className="flex flex-wrap items-center gap-3 pt-1">
+              {/* Visa Logo Badge */}
+              <div className="px-3.5 py-2 bg-white rounded-xl border border-dark-700 flex items-center justify-center shadow-sm hover:scale-105 transition-transform">
+                <svg className="h-5 w-auto" viewBox="0 0 100 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M34.7 1.8L22.9 29.8H15.1L8.9 6.4C8.6 5.1 8 4.6 6.9 4C5.1 3 2.4 2.1 0 1.6L0.2 0.7H12.7C14.3 0.7 15.7 1.8 16 3.6L19 19.3L26.9 0.7H34.7V1.8ZM64.6 20.3C64.6 12.5 53.7 12.1 53.8 8.6C53.9 7.5 55 6.3 57.4 6C58.6 5.9 61.8 5.8 65.5 7.5L66.9 1H61C54.4 1 49.8 4.5 49.7 9.4C49.6 16.9 60.5 17.3 60.4 21.2C60.3 22.4 59 23.6 56.4 23.9C53.9 24.2 50.7 23.5 47.1 21.8L45.6 28.5C49.4 30.3 53.7 31.1 58.2 31.1C65.2 31.1 69.8 27.6 69.9 22.4L64.6 20.3ZM95.2 0.7H89.2C87.4 0.7 86 1.7 85.3 3.3L73 31.1H81.2L82.8 26.6H92.8L93.7 31.1H100L95.2 0.7ZM85.1 20.3L89.2 8.7L91.6 20.3H85.1ZM46.9 0.7L40.7 31.1H33L39.2 0.7H46.9Z" fill="#1434CB"/>
+                  <path d="M12.7 0.7H0.2L0 1.6C4.8 2.8 9.5 4.9 12.7 7.7L16 3.6C15.7 1.8 14.3 0.7 12.7 0.7Z" fill="#F7B600"/>
+                </svg>
+              </div>
+
+              {/* Whish Money Logo Badge */}
+              <div className="px-3.5 py-2 bg-rose-600 hover:bg-rose-500 rounded-xl border border-rose-400/40 flex items-center justify-center shadow-glow-sm hover:scale-105 transition-all cursor-pointer">
+                <span className="font-extrabold text-white text-xs tracking-wider uppercase flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-white animate-pulse"></span>
+                  WHISH MONEY
+                </span>
+              </div>
             </div>
 
             <div className="p-3 bg-emerald-500/10 border border-emerald-500/20 rounded-xl flex items-center gap-2.5 text-xs text-emerald-300">
