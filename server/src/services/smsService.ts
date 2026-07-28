@@ -16,7 +16,31 @@ export async function sendPhoneOTP(phoneNumber: string, code: string): Promise<b
 
   console.log(`📱 [PHONE OTP CODE FOR ${cleanPhone}]: ${code}`);
 
-  // 1. Vonage (Nexmo) SMS API Dispatch (Free $2.00 trial credit)
+  // 1. Green API Free WhatsApp Dispatch (Sends to ANY WhatsApp number)
+  if (GREEN_API_INSTANCE_ID && GREEN_API_TOKEN) {
+    try {
+      const digitsOnly = cleanPhone.replace(/\D/g, '');
+      const response = await fetch(`https://api.green-api.com/waInstance${GREEN_API_INSTANCE_ID}/sendMessage/${GREEN_API_TOKEN}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          chatId: `${digitsOnly}@c.us`,
+          message: messageBody,
+        }),
+      });
+      const data = await response.json() as any;
+      if (response.ok && data?.idMessage) {
+        console.log(`📱 [GREEN API WHATSAPP SUCCESS] Dispatched WhatsApp OTP code ${code} to ${cleanPhone}`);
+        return true;
+      } else {
+        console.warn(`⚠️ [GREEN API ERROR] ${JSON.stringify(data)}`);
+      }
+    } catch (err: any) {
+      console.error(`❌ [GREEN API EXCEPTION] Error sending WhatsApp to ${cleanPhone}:`, err?.message || err);
+    }
+  }
+
+  // 2. Vonage (Nexmo) SMS API Dispatch (Free $2.00 trial credit)
   if (VONAGE_API_KEY && VONAGE_API_SECRET) {
     try {
       const response = await fetch('https://rest.nexmo.com/sms/json', {
@@ -39,27 +63,6 @@ export async function sendPhoneOTP(phoneNumber: string, code: string): Promise<b
       }
     } catch (err: any) {
       console.error(`❌ [VONAGE SMS EXCEPTION] Error sending SMS to ${cleanPhone}:`, err?.message || err);
-    }
-  }
-
-  // 2. Green API Free WhatsApp Dispatch
-  if (GREEN_API_INSTANCE_ID && GREEN_API_TOKEN) {
-    try {
-      const response = await fetch(`https://api.green-api.com/waInstance${GREEN_API_INSTANCE_ID}/sendMessage/${GREEN_API_TOKEN}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          chatId: `${cleanPhone.replace('+', '')}@c.us`,
-          message: messageBody,
-        }),
-      });
-      const data = await response.json() as any;
-      if (response.ok && data?.idMessage) {
-        console.log(`📱 [GREEN API WHATSAPP SUCCESS] Dispatched WhatsApp OTP to ${cleanPhone}`);
-        return true;
-      }
-    } catch (err: any) {
-      console.error(`❌ [GREEN API EXCEPTION] Error sending WhatsApp to ${cleanPhone}:`, err?.message || err);
     }
   }
 
