@@ -159,7 +159,7 @@ export default function Home() {
                   return (
                     <Link href={`/shop?category=${cat.slug}`} key={cat.id} aria-label={`Explore ${catName} category`} className="group relative aspect-square overflow-hidden rounded-2xl border border-white/5">
                       {cat.image ? (
-                        <img src={getImageUrl(cat.image)} alt={catName} className="absolute inset-0 w-full h-full object-cover transform group-hover:scale-110 transition-transform duration-700" />
+                        <img src={getImageUrl(cat.image)} alt={catName} loading="lazy" decoding="async" className="absolute inset-0 w-full h-full object-cover transform group-hover:scale-110 transition-transform duration-700" />
                       ) : (
                         <div className="absolute inset-0 bg-gradient-to-br from-dark-800 to-dark-900" />
                       )}

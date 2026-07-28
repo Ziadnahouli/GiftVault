@@ -51,8 +51,8 @@ const config: Config = {
         },
       },
       fontFamily: {
-        sans: ['Inter', 'sans-serif'],
-        arabic: ['Cairo', 'sans-serif'],
+        sans: ['var(--font-inter)', 'Inter', 'sans-serif'],
+        arabic: ['var(--font-cairo)', 'Cairo', 'sans-serif'],
       },
       backgroundImage: {
         'gradient-radial': 'radial-gradient(var(--tw-gradient-stops))',
