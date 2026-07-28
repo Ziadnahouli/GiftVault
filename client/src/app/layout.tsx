@@ -35,6 +35,9 @@ export const metadata: Metadata = {
   authors: [{ name: 'GiftVault Team' }],
   creator: 'GiftVault Inc.',
   publisher: 'GiftVault Inc.',
+  verification: {
+    google: process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION || '',
+  },
   robots: {
     index: true,
     follow: true,
