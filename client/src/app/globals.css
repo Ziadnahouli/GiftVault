@@ -18,11 +18,15 @@
 
   html {
     scroll-behavior: smooth;
+    max-width: 100vw;
+    overflow-x: hidden;
   }
 
   body {
     @apply bg-dark-950 text-dark-100 font-sans antialiased;
+    max-width: 100vw;
     overflow-x: hidden;
+    position: relative;
   }
 
   [dir="rtl"] body {
