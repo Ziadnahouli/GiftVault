@@ -69,10 +69,6 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
     return current;
   };
 
-  if (!mounted) {
-    return null; // or a skeleton loader
-  }
-
   return (
     <LanguageContext.Provider value={{ language, setLanguage, t, dir: language === 'ar' ? 'rtl' : 'ltr' }}>
       {children}

@@ -115,8 +115,8 @@ const config: Config = {
           '100%': { backgroundPosition: '200% 0' },
         },
         pulseGlow: {
-          '0%, 100%': { boxShadow: '0 0 15px rgba(59, 130, 246, 0.15)' },
-          '50%': { boxShadow: '0 0 30px rgba(59, 130, 246, 0.4)' },
+          '0%, 100%': { opacity: '0.4', transform: 'scale(1)' },
+          '50%': { opacity: '0.8', transform: 'scale(1.05)' },
         },
         bounceSubtle: {
           '0%, 100%': { transform: 'translateY(0)' },

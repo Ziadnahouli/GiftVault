@@ -77,10 +77,6 @@ export function CurrencyProvider({ children }: { children: React.ReactNode }) {
     return `${activeCurrency.symbol}${converted.toFixed(2)}`;
   };
 
-  if (!mounted) {
-    return null;
-  }
-
   return (
     <CurrencyContext.Provider value={{ currency, setCurrency, formatPrice, convertPrice, currencies }}>
       {children}
