@@ -16,7 +16,8 @@ import {
   Tag,
   ShieldCheck,
   Search,
-  Database
+  Database,
+  Star
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Skeleton } from '@/components/ui/Skeleton';
@@ -40,6 +41,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const menuItems = [
     { name: 'Dashboard', path: '/admin', icon: <LayoutDashboard className="w-5 h-5" /> },
     { name: 'Orders', path: '/admin/orders', icon: <ShoppingCart className="w-5 h-5" /> },
+    { name: 'Reviews', path: '/admin/reviews', icon: <Star className="w-5 h-5" /> },
     { name: 'Products', path: '/admin/products', icon: <Package className="w-5 h-5" /> },
     { name: 'Inventory', path: '/admin/inventory', icon: <Search className="w-5 h-5" /> },
     { name: 'Categories', path: '/admin/categories', icon: <Tag className="w-5 h-5" /> },

@@ -13,6 +13,7 @@ import { Navbar } from '@/components/layout/Navbar';
 import { Footer } from '@/components/layout/Footer';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { Badge } from '@/components/ui/Badge';
+import { ProductReviews } from '@/components/reviews/ProductReviews';
 
 export default function ProductPage() {
   const { slug } = useParams();
@@ -393,28 +394,7 @@ export default function ProductPage() {
                     </div>
                   )}
                   {activeTab === 'reviews' && (
-                    <div>
-                      {product.reviews && product.reviews.length > 0 ? (
-                        <div className="space-y-4">
-                          {product.reviews.map((review: any) => (
-                            <div key={review.id} className="glass-card p-4">
-                              <div className="flex items-center justify-between mb-2">
-                                <span className="font-bold text-white">{review.user_name}</span>
-                                <div className="flex text-amber-400">
-                                  {[...Array(5)].map((_, i) => (
-                                    <Star key={i} className={`w-3.5 h-3.5 ${i < review.rating ? 'fill-current' : 'text-dark-600'}`} />
-                                  ))}
-                                </div>
-                              </div>
-                              <p className="text-dark-300 text-sm">{review.comment}</p>
-                              <div className="text-dark-500 text-xs mt-2">{new Date(review.created_at).toLocaleDateString()}</div>
-                            </div>
-                          ))}
-                        </div>
-                      ) : (
-                        <p className="text-dark-400">No reviews yet for this product.</p>
-                      )}
-                    </div>
+                    <ProductReviews productId={product.id} />
                   )}
                 </div>
               </div>

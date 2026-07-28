@@ -536,8 +536,54 @@ export function runMigrations(): void {
   safeAddColumn('users', 'registration_method', "TEXT DEFAULT 'email'");
   safeAddColumn('users', 'notification_settings', `TEXT DEFAULT '{"email":true,"sms":true,"security":true}'`);
 
-  // Ensure sessions and tokens tables exist
+  // orders table new columns
+  safeAddColumn('orders', 'payment_status', "TEXT DEFAULT 'unpaid'");
+  safeAddColumn('orders', 'whatsapp_link', 'TEXT');
+  safeAddColumn('orders', 'admin_notes', 'TEXT');
+  safeAddColumn('orders', 'payment_method', "TEXT DEFAULT 'whatsapp'");
+  safeAddColumn('orders', 'last_updated_at', 'DATETIME DEFAULT CURRENT_TIMESTAMP');
+
+  // reviews table new columns
+  safeAddColumn('reviews', 'title', 'TEXT');
+  safeAddColumn('reviews', 'is_pinned', 'INTEGER DEFAULT 0');
+  safeAddColumn('reviews', 'is_hidden', 'INTEGER DEFAULT 0');
+  safeAddColumn('reviews', 'verified_purchase', 'INTEGER DEFAULT 1');
+
+  // Ensure sessions, tokens, status history, review votes, and review replies tables exist
   _db.exec(`
+    CREATE TABLE IF NOT EXISTS order_status_history (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      order_id INTEGER NOT NULL,
+      old_status TEXT,
+      new_status TEXT NOT NULL,
+      notes TEXT,
+      created_by INTEGER,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE
+    );
+
+    CREATE TABLE IF NOT EXISTS review_votes (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      review_id INTEGER NOT NULL,
+      user_id INTEGER NOT NULL,
+      vote TEXT NOT NULL CHECK(vote IN ('helpful', 'unhelpful')),
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE(review_id, user_id),
+      FOREIGN KEY (review_id) REFERENCES reviews(id) ON DELETE CASCADE,
+      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    );
+
+    CREATE TABLE IF NOT EXISTS review_replies (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      review_id INTEGER NOT NULL,
+      user_id INTEGER NOT NULL,
+      reply_text TEXT NOT NULL,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (review_id) REFERENCES reviews(id) ON DELETE CASCADE,
+      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    );
+
     CREATE TABLE IF NOT EXISTS user_sessions (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       user_id INTEGER NOT NULL,
@@ -566,7 +612,7 @@ export function runMigrations(): void {
     );
   `);
 
-  // Create indexes for auth and session performance
+  // Create indexes for auth, order history, review votes performance
   try {
     _db.exec(`
       CREATE INDEX IF NOT EXISTS idx_users_firebase_uid ON users(firebase_uid);
@@ -578,6 +624,9 @@ export function runMigrations(): void {
       CREATE INDEX IF NOT EXISTS idx_auth_tokens_token ON auth_tokens(token);
       CREATE INDEX IF NOT EXISTS idx_gift_card_values_sku ON gift_card_values(sku);
       CREATE INDEX IF NOT EXISTS idx_gift_card_values_stock ON gift_card_values(stock);
+      CREATE INDEX IF NOT EXISTS idx_order_status_history_order ON order_status_history(order_id);
+      CREATE INDEX IF NOT EXISTS idx_review_votes_review ON review_votes(review_id);
+      CREATE INDEX IF NOT EXISTS idx_review_replies_review ON review_replies(review_id);
     `);
   } catch (e: any) {
     console.error('Failed to create new indexes:', e.message);

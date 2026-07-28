@@ -1131,4 +1131,368 @@ router.delete('/users/:id', (req: AuthRequest, res: Response) => {
   }
 });
 
+// ==================== ADMIN ORDERS MANAGEMENT ====================
+
+// GET /api/admin/orders/stats — Order Summary Statistics
+router.get('/orders/stats', (req: AuthRequest, res: Response) => {
+  try {
+    const totalOrders = db.prepare('SELECT COUNT(*) as total FROM orders').get() as any;
+    const pendingOrders = db.prepare("SELECT COUNT(*) as total FROM orders WHERE status IN ('pending', 'awaiting_payment')").get() as any;
+    const completedOrders = db.prepare("SELECT COUNT(*) as total FROM orders WHERE status = 'completed'").get() as any;
+    const cancelledOrders = db.prepare("SELECT COUNT(*) as total FROM orders WHERE status = 'cancelled'").get() as any;
+    const totalRevenue = db.prepare("SELECT COALESCE(SUM(total_usd), 0) as total FROM orders WHERE status != 'cancelled'").get() as any;
+    const ordersToday = db.prepare("SELECT COUNT(*) as total FROM orders WHERE date(created_at) = date('now')").get() as any;
+    const ordersMonth = db.prepare("SELECT COUNT(*) as total FROM orders WHERE strftime('%Y-%m', created_at) = strftime('%Y-%m', 'now')").get() as any;
+
+    res.json({
+      stats: {
+        totalOrders: totalOrders.total,
+        pendingOrders: pendingOrders.total,
+        completedOrders: completedOrders.total,
+        cancelledOrders: cancelledOrders.total,
+        revenue: totalRevenue.total,
+        ordersToday: ordersToday.total,
+        ordersMonth: ordersMonth.total,
+      }
+    });
+  } catch (error: any) {
+    res.status(500).json({ error: 'Failed to fetch order statistics' });
+  }
+});
+
+// GET /api/admin/orders — List & Search Orders
+router.get('/orders', (req: AuthRequest, res: Response) => {
+  try {
+    const { limit, offset, page } = getPagination(req.query);
+    const { search, status, payment_status, currency, date, sortBy } = req.query as any;
+
+    let where = 'WHERE 1=1';
+    const params: any[] = [];
+
+    if (search) {
+      where += ` AND (o.order_number LIKE ? OR o.full_name LIKE ? OR o.email LIKE ? OR o.whatsapp LIKE ?)`;
+      params.push(`%${search}%`, `%${search}%`, `%${search}%`, `%${search}%`);
+    }
+
+    if (status) {
+      where += ` AND o.status = ?`;
+      params.push(status);
+    }
+
+    if (payment_status) {
+      where += ` AND o.payment_status = ?`;
+      params.push(payment_status);
+    }
+
+    if (currency) {
+      where += ` AND o.display_currency = ?`;
+      params.push(currency);
+    }
+
+    if (date) {
+      where += ` AND date(o.created_at) = date(?)`;
+      params.push(date);
+    }
+
+    let orderBy = 'o.created_at DESC';
+    if (sortBy === 'oldest') orderBy = 'o.created_at ASC';
+    else if (sortBy === 'highest_value') orderBy = 'o.total_usd DESC';
+    else if (sortBy === 'lowest_value') orderBy = 'o.total_usd ASC';
+
+    const countResult = db.prepare(`SELECT COUNT(*) as total FROM orders o ${where}`).get(...params) as any;
+
+    const orders = db.prepare(
+      `SELECT o.*, 
+       (SELECT COUNT(*) FROM order_items WHERE order_id = o.id) as item_count
+       FROM orders o ${where} ORDER BY ${orderBy} LIMIT ? OFFSET ?`
+    ).all(...params, limit, offset) as any[];
+
+    for (const order of orders) {
+      order.items = db.prepare('SELECT * FROM order_items WHERE order_id = ?').all(order.id);
+      order.timeline = db.prepare('SELECT * FROM order_status_history WHERE order_id = ? ORDER BY created_at ASC').all(order.id);
+    }
+
+    res.json({
+      orders,
+      pagination: { page, limit, total: countResult.total, pages: Math.ceil(countResult.total / limit) },
+    });
+  } catch (error: any) {
+    console.error('Get admin orders error:', error);
+    res.status(500).json({ error: 'Failed to fetch orders' });
+  }
+});
+
+// GET /api/admin/orders/:id — Single Order Details
+router.get('/orders/:id', (req: AuthRequest, res: Response) => {
+  try {
+    const orderId = req.params.id;
+    const order = db.prepare('SELECT * FROM orders WHERE id = ? OR order_number = ?').get(orderId, orderId) as any;
+
+    if (!order) {
+      res.status(404).json({ error: 'Order not found' });
+      return;
+    }
+
+    order.items = db.prepare('SELECT * FROM order_items WHERE order_id = ?').all(order.id);
+    order.timeline = db.prepare('SELECT * FROM order_status_history WHERE order_id = ? ORDER BY created_at ASC').all(order.id);
+
+    res.json({ order });
+  } catch (error: any) {
+    res.status(500).json({ error: 'Failed to get order details' });
+  }
+});
+
+// PUT /api/admin/orders/:id/status — Change Order Status
+router.put('/orders/:id/status', (req: AuthRequest, res: Response) => {
+  try {
+    const orderId = parseInt(req.params.id);
+    const { status, notes } = req.body;
+
+    const allowedStatuses = ['pending', 'awaiting_payment', 'paid', 'processing', 'completed', 'cancelled', 'refunded', 'expired'];
+    if (!allowedStatuses.includes(status)) {
+      res.status(400).json({ error: `Invalid status. Must be one of: ${allowedStatuses.join(', ')}` });
+      return;
+    }
+
+    const order = db.prepare('SELECT * FROM orders WHERE id = ?').get(orderId) as any;
+    if (!order) {
+      res.status(404).json({ error: 'Order not found' });
+      return;
+    }
+
+    const oldStatus = order.status;
+
+    // Determine updated payment_status automatically if status changes to paid/completed/refunded
+    let newPaymentStatus = order.payment_status;
+    if (status === 'paid' || status === 'completed') {
+      newPaymentStatus = 'paid';
+    } else if (status === 'refunded') {
+      newPaymentStatus = 'refunded';
+    }
+
+    db.prepare(`
+      UPDATE orders 
+      SET status = ?, payment_status = ?, updated_at = CURRENT_TIMESTAMP, last_updated_at = CURRENT_TIMESTAMP
+      WHERE id = ?
+    `).run(status, newPaymentStatus, orderId);
+
+    // Record timeline entry
+    db.prepare(`
+      INSERT INTO order_status_history (order_id, old_status, new_status, notes, created_by)
+      VALUES (?, ?, ?, ?, ?)
+    `).run(orderId, oldStatus, status, notes ? sanitize(notes) : `Status changed to ${status}`, req.user!.id);
+
+    const updatedOrder = db.prepare('SELECT * FROM orders WHERE id = ?').get(orderId);
+    res.json({ message: 'Order status updated', order: updatedOrder });
+  } catch (error: any) {
+    console.error('Update order status error:', error);
+    res.status(500).json({ error: 'Failed to update order status' });
+  }
+});
+
+// PUT /api/admin/orders/:id/notes — Update Admin Notes
+router.put('/orders/:id/notes', (req: AuthRequest, res: Response) => {
+  try {
+    const orderId = parseInt(req.params.id);
+    const { admin_notes } = req.body;
+
+    db.prepare('UPDATE orders SET admin_notes = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?').run(sanitize(admin_notes || ''), orderId);
+    res.json({ message: 'Admin notes updated successfully' });
+  } catch (error: any) {
+    res.status(500).json({ error: 'Failed to update admin notes' });
+  }
+});
+
+// PUT /api/admin/orders/:id/payment-status — Update Payment Status
+router.put('/orders/:id/payment-status', (req: AuthRequest, res: Response) => {
+  try {
+    const orderId = parseInt(req.params.id);
+    const { payment_status } = req.body;
+
+    const allowed = ['unpaid', 'paid', 'refunded', 'partially_refunded'];
+    if (!allowed.includes(payment_status)) {
+      res.status(400).json({ error: 'Invalid payment status' });
+      return;
+    }
+
+    db.prepare('UPDATE orders SET payment_status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?').run(payment_status, orderId);
+    res.json({ message: 'Payment status updated' });
+  } catch (error: any) {
+    res.status(500).json({ error: 'Failed to update payment status' });
+  }
+});
+
+// DELETE /api/admin/orders/:id — Delete Order
+router.delete('/orders/:id', (req: AuthRequest, res: Response) => {
+  try {
+    const orderId = parseInt(req.params.id);
+    db.prepare('DELETE FROM order_items WHERE order_id = ?').run(orderId);
+    db.prepare('DELETE FROM order_status_history WHERE order_id = ?').run(orderId);
+    db.prepare('DELETE FROM orders WHERE id = ?').run(orderId);
+    res.json({ message: 'Order deleted successfully' });
+  } catch (error: any) {
+    res.status(500).json({ error: 'Failed to delete order' });
+  }
+});
+
+
+// ==================== ADMIN REVIEWS MANAGEMENT ====================
+
+// GET /api/admin/reviews — List & Moderation Filter
+router.get('/reviews', (req: AuthRequest, res: Response) => {
+  try {
+    const { limit, offset, page } = getPagination(req.query);
+    const { search, status, rating, verified, sortBy } = req.query as any;
+
+    let where = 'WHERE 1=1';
+    const params: any[] = [];
+
+    if (search) {
+      where += ` AND (r.comment LIKE ? OR r.title LIKE ? OR u.name LIKE ? OR p.name_en LIKE ?)`;
+      params.push(`%${search}%`, `%${search}%`, `%${search}%`, `%${search}%`);
+    }
+
+    if (status === 'approved') {
+      where += ` AND r.is_approved = 1 AND r.is_hidden = 0`;
+    } else if (status === 'pending') {
+      where += ` AND r.is_approved = 0`;
+    } else if (status === 'hidden') {
+      where += ` AND r.is_hidden = 1`;
+    }
+
+    if (rating) {
+      where += ` AND r.rating = ?`;
+      params.push(parseInt(rating));
+    }
+
+    if (verified !== undefined && verified !== '') {
+      where += ` AND r.verified_purchase = ?`;
+      params.push(parseInt(verified));
+    }
+
+    let orderBy = 'r.is_pinned DESC, r.created_at DESC';
+    if (sortBy === 'oldest') orderBy = 'r.created_at ASC';
+    else if (sortBy === 'highest_rating') orderBy = 'r.rating DESC';
+    else if (sortBy === 'lowest_rating') orderBy = 'r.rating ASC';
+
+    const countResult = db.prepare(`
+      SELECT COUNT(*) as total FROM reviews r
+      JOIN users u ON r.user_id = u.id
+      JOIN products p ON r.product_id = p.id
+      ${where}
+    `).get(...params) as any;
+
+    const reviews = db.prepare(`
+      SELECT r.*, 
+        u.name as user_name, u.avatar as user_avatar,
+        p.name_en as product_name_en, p.image as product_image, p.slug as product_slug,
+        (SELECT COUNT(*) FROM review_votes WHERE review_id = r.id AND vote = 'helpful') as helpful_count,
+        (SELECT COUNT(*) FROM review_votes WHERE review_id = r.id AND vote = 'unhelpful') as unhelpful_count,
+        (SELECT reply_text FROM review_replies WHERE review_id = r.id ORDER BY created_at DESC LIMIT 1) as admin_reply
+      FROM reviews r
+      JOIN users u ON r.user_id = u.id
+      JOIN products p ON r.product_id = p.id
+      ${where}
+      ORDER BY ${orderBy}
+      LIMIT ? OFFSET ?
+    `).all(...params, limit, offset);
+
+    res.json({
+      reviews,
+      pagination: { page, limit, total: countResult.total, pages: Math.ceil(countResult.total / limit) },
+    });
+  } catch (error: any) {
+    console.error('Get admin reviews error:', error);
+    res.status(500).json({ error: 'Failed to fetch reviews' });
+  }
+});
+
+// PUT /api/admin/reviews/:id/approve
+router.put('/reviews/:id/approve', (req: AuthRequest, res: Response) => {
+  try {
+    const reviewId = parseInt(req.params.id);
+    db.prepare('UPDATE reviews SET is_approved = 1, is_hidden = 0 WHERE id = ?').run(reviewId);
+    res.json({ message: 'Review approved successfully' });
+  } catch (error: any) {
+    res.status(500).json({ error: 'Failed to approve review' });
+  }
+});
+
+// PUT /api/admin/reviews/:id/reject
+router.put('/reviews/:id/reject', (req: AuthRequest, res: Response) => {
+  try {
+    const reviewId = parseInt(req.params.id);
+    db.prepare('UPDATE reviews SET is_approved = 0 WHERE id = ?').run(reviewId);
+    res.json({ message: 'Review rejected' });
+  } catch (error: any) {
+    res.status(500).json({ error: 'Failed to reject review' });
+  }
+});
+
+// PUT /api/admin/reviews/:id/pin — Toggle Pin
+router.put('/reviews/:id/pin', (req: AuthRequest, res: Response) => {
+  try {
+    const reviewId = parseInt(req.params.id);
+    const review = db.prepare('SELECT is_pinned FROM reviews WHERE id = ?').get(reviewId) as any;
+    if (!review) return res.status(404).json({ error: 'Review not found' });
+
+    const newPinned = review.is_pinned ? 0 : 1;
+    db.prepare('UPDATE reviews SET is_pinned = ? WHERE id = ?').run(newPinned, reviewId);
+    res.json({ message: newPinned ? 'Review pinned to top' : 'Review unpinned', is_pinned: newPinned });
+  } catch (error: any) {
+    res.status(500).json({ error: 'Failed to toggle pin' });
+  }
+});
+
+// PUT /api/admin/reviews/:id/hide — Toggle Hide
+router.put('/reviews/:id/hide', (req: AuthRequest, res: Response) => {
+  try {
+    const reviewId = parseInt(req.params.id);
+    const review = db.prepare('SELECT is_hidden FROM reviews WHERE id = ?').get(reviewId) as any;
+    if (!review) return res.status(404).json({ error: 'Review not found' });
+
+    const newHidden = review.is_hidden ? 0 : 1;
+    db.prepare('UPDATE reviews SET is_hidden = ? WHERE id = ?').run(newHidden, reviewId);
+    res.json({ message: newHidden ? 'Review hidden from store' : 'Review unhidden', is_hidden: newHidden });
+  } catch (error: any) {
+    res.status(500).json({ error: 'Failed to toggle hide' });
+  }
+});
+
+// POST /api/admin/reviews/:id/reply — Add/Update Admin Reply
+router.post('/reviews/:id/reply', (req: AuthRequest, res: Response) => {
+  try {
+    const reviewId = parseInt(req.params.id);
+    const { reply_text } = req.body;
+
+    if (!reply_text || !reply_text.trim()) {
+      return res.status(400).json({ error: 'Reply text is required' });
+    }
+
+    const existing = db.prepare('SELECT id FROM review_replies WHERE review_id = ?').get(reviewId) as any;
+    if (existing) {
+      db.prepare('UPDATE review_replies SET reply_text = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?').run(sanitize(reply_text), existing.id);
+    } else {
+      db.prepare('INSERT INTO review_replies (review_id, user_id, reply_text) VALUES (?, ?, ?)').run(reviewId, req.user!.id, sanitize(reply_text));
+    }
+
+    res.json({ message: 'Admin reply saved successfully' });
+  } catch (error: any) {
+    res.status(500).json({ error: 'Failed to save admin reply' });
+  }
+});
+
+// DELETE /api/admin/reviews/:id — Delete Review
+router.delete('/reviews/:id', (req: AuthRequest, res: Response) => {
+  try {
+    const reviewId = parseInt(req.params.id);
+    db.prepare('DELETE FROM review_votes WHERE review_id = ?').run(reviewId);
+    db.prepare('DELETE FROM review_replies WHERE review_id = ?').run(reviewId);
+    db.prepare('DELETE FROM reviews WHERE id = ?').run(reviewId);
+    res.json({ message: 'Review deleted successfully' });
+  } catch (error: any) {
+    res.status(500).json({ error: 'Failed to delete review' });
+  }
+});
+
 export default router;

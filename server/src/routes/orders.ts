@@ -105,10 +105,19 @@ router.post('/', optionalAuth, (req: AuthRequest, res: Response) => {
     const displayCurrency = data.display_currency || 'USD';
     const displayTotal = convertCurrency(finalTotal, displayCurrency);
 
+    // Build WhatsApp conversation link
+    const adminWhatsapp = process.env.WHATSAPP_NUMBER || '96103794986';
+    let whatsappMessage = `*New Order ${orderNumber}*\nName: ${sanitize(data.full_name)}\nTotal: ${displayCurrency} ${displayTotal.toFixed(2)}\n\n*Items:*\n`;
+    validatedItems.forEach(i => {
+      whatsappMessage += `• ${i.product_name} (${i.face_value} ${i.currency_code}) x${i.quantity}\n`;
+    });
+    whatsappMessage += `\nPlease confirm payment instructions for Order ${orderNumber}.`;
+    const whatsappLink = `https://wa.me/${adminWhatsapp.replace(/\D/g, '')}?text=${encodeURIComponent(whatsappMessage)}`;
+
     // Create order
     const orderResult = db.prepare(
-      `INSERT INTO orders (user_id, order_number, total_usd, display_currency, display_total, full_name, email, whatsapp, country, notes, coupon_code, discount_amount)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+      `INSERT INTO orders (user_id, order_number, status, payment_status, total_usd, display_currency, display_total, full_name, email, whatsapp, country, notes, coupon_code, discount_amount, whatsapp_link)
+       VALUES (?, ?, 'pending', 'unpaid', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
     ).run(
       req.user?.id || null,
       orderNumber,
@@ -121,8 +130,17 @@ router.post('/', optionalAuth, (req: AuthRequest, res: Response) => {
       sanitize(data.country || ''),
       sanitize(data.notes || ''),
       data.coupon_code || null,
-      discountAmount
+      discountAmount,
+      whatsappLink
     );
+
+    const orderId = orderResult.lastInsertRowid;
+
+    // Log initial status history
+    db.prepare(`
+      INSERT INTO order_status_history (order_id, old_status, new_status, notes, created_by)
+      VALUES (?, NULL, 'pending', 'Order created via WhatsApp checkout', ?)
+    `).run(orderId, req.user?.id || null);
 
     // Create order items
     const insertItem = db.prepare(
@@ -132,7 +150,7 @@ router.post('/', optionalAuth, (req: AuthRequest, res: Response) => {
 
     for (const item of validatedItems) {
       insertItem.run(
-        orderResult.lastInsertRowid,
+        orderId,
         item.product_id,
         item.product_name,
         item.region_name,
@@ -143,13 +161,14 @@ router.post('/', optionalAuth, (req: AuthRequest, res: Response) => {
       );
     }
 
-    // Fetch created order with items
-    const order = db.prepare('SELECT * FROM orders WHERE id = ?').get(orderResult.lastInsertRowid) as any;
-    const orderItems = db.prepare('SELECT * FROM order_items WHERE order_id = ?').all(orderResult.lastInsertRowid);
+    // Fetch created order with items and history
+    const order = db.prepare('SELECT * FROM orders WHERE id = ?').get(orderId) as any;
+    const orderItems = db.prepare('SELECT * FROM order_items WHERE order_id = ?').all(orderId);
+    const history = db.prepare('SELECT * FROM order_status_history WHERE order_id = ? ORDER BY created_at ASC').all(orderId);
 
     res.status(201).json({
       message: 'Order placed successfully',
-      order: { ...order, items: orderItems },
+      order: { ...order, items: orderItems, timeline: history },
     });
   } catch (error: any) {
     console.error('Create order error:', error);
@@ -177,9 +196,10 @@ router.get('/', authenticate, (req: AuthRequest, res: Response) => {
       `SELECT o.* FROM orders o ${where} ORDER BY o.created_at DESC LIMIT ? OFFSET ?`
     ).all(...params, limit, offset) as any[];
 
-    // Attach items to each order
+    // Attach items and timeline to each order
     for (const order of orders) {
       order.items = db.prepare('SELECT * FROM order_items WHERE order_id = ?').all(order.id);
+      order.timeline = db.prepare('SELECT * FROM order_status_history WHERE order_id = ? ORDER BY created_at ASC').all(order.id);
     }
 
     res.json({
@@ -208,6 +228,7 @@ router.get('/:orderNumber', optionalAuth, (req: AuthRequest, res: Response) => {
     }
 
     order.items = db.prepare('SELECT * FROM order_items WHERE order_id = ?').all(order.id);
+    order.timeline = db.prepare('SELECT * FROM order_status_history WHERE order_id = ? ORDER BY created_at ASC').all(order.id);
 
     res.json({ order });
   } catch (error: any) {

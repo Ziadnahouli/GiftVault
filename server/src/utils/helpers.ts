@@ -37,13 +37,11 @@ export function generateSlug(text: string): string {
     .substring(0, 100);
 }
 
-/**
- * Generate a unique order number.
- */
 export function generateOrderNumber(): string {
-  const timestamp = Date.now().toString(36).toUpperCase();
-  const random = Math.random().toString(36).substring(2, 6).toUpperCase();
-  return `GV-${timestamp}-${random}`;
+  const now = new Date();
+  const dateStr = now.toISOString().slice(0, 10).replace(/-/g, '');
+  const randomDigits = Math.floor(100000 + Math.random() * 900000).toString();
+  return `GV-${dateStr}-${randomDigits}`;
 }
 
 /**

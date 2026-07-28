@@ -12,6 +12,8 @@ import { Footer } from '@/components/layout/Footer';
 import { Badge } from '@/components/ui/Badge';
 import { Skeleton } from '@/components/ui/Skeleton';
 
+import { InvoiceModal } from '@/components/orders/InvoiceModal';
+
 export default function DashboardPage() {
   const { user, logout, isAuthenticated, isLoading: authLoading } = useAuth();
   const { formatPrice } = useCurrency();
@@ -43,11 +45,15 @@ export default function DashboardPage() {
     return <div className="min-h-screen bg-dark-950 flex items-center justify-center"><Skeleton className="w-32 h-32 rounded-full" /></div>;
   }
 
+  const [selectedInvoiceOrder, setSelectedInvoiceOrder] = useState<any>(null);
+
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'completed': return <Badge variant="success">Completed</Badge>;
+      case 'paid': return <Badge variant="success" className="bg-emerald-500/20 text-emerald-300">Paid</Badge>;
       case 'processing': return <Badge variant="warning">Processing</Badge>;
       case 'cancelled': return <Badge variant="danger">Cancelled</Badge>;
+      case 'refunded': return <Badge variant="default" className="bg-purple-500/20 text-purple-300">Refunded</Badge>;
       default: return <Badge variant="primary">Pending</Badge>;
     }
   };
@@ -107,8 +113,8 @@ export default function DashboardPage() {
                   Array(3).fill(0).map((_, i) => <Skeleton key={i} className="h-32 w-full" />)
                 ) : orders.length > 0 ? (
                   orders.map(order => (
-                    <div key={order.id} className="glass-card p-6">
-                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4 pb-4 border-b border-dark-800">
+                    <div key={order.id} className="glass-card p-6 space-y-4">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-dark-800">
                         <div>
                           <div className="flex items-center gap-3 mb-1">
                             <span className="font-mono text-white font-bold">{order.order_number}</span>
@@ -116,21 +122,43 @@ export default function DashboardPage() {
                           </div>
                           <span className="text-sm text-dark-400">{new Date(order.created_at).toLocaleString()}</span>
                         </div>
-                        <div className="text-right">
-                          <div className="text-sm text-dark-400">Total Amount</div>
-                          <div className="text-lg font-bold text-primary-400">{formatPrice(order.total_usd)}</div>
+                        <div className="flex items-center gap-4">
+                          <button
+                            onClick={() => setSelectedInvoiceOrder(order)}
+                            className="btn-secondary py-1.5 px-3 text-xs rounded-xl flex items-center gap-1.5"
+                          >
+                            <span>View Invoice</span>
+                          </button>
+                          <div className="text-right">
+                            <div className="text-xs text-dark-400">Total Amount</div>
+                            <div className="text-lg font-bold text-primary-400 font-mono">
+                              {order.display_currency && order.display_currency !== 'USD'
+                                ? `${order.display_currency} ${order.display_total?.toFixed(2)}`
+                                : formatPrice(order.total_usd)}
+                            </div>
+                          </div>
                         </div>
                       </div>
                       
-                      <div className="space-y-2">
+                      <div className="space-y-3">
                         {order.items?.map((item: any) => (
-                          <div key={item.id} className="flex justify-between items-center text-sm">
+                          <div key={item.id} className="flex justify-between items-center text-sm py-1 border-b border-dark-800/40 last:border-0">
                             <div className="flex items-center gap-2">
-                              <span className="text-white">{item.quantity}x</span>
-                              <span className="text-dark-300">{item.product_name}</span>
+                              <span className="text-white font-bold">x{item.quantity}</span>
+                              <span className="text-dark-200 font-semibold">{item.product_name}</span>
                               <span className="text-dark-500">({item.face_value} {item.currency_code})</span>
                             </div>
-                            <span className="text-dark-400">{formatPrice(item.price_usd * item.quantity)}</span>
+                            <div className="flex items-center gap-3">
+                              <span className="text-dark-300 font-mono">{formatPrice(item.price_usd * item.quantity)}</span>
+                              {(order.status === 'completed' || order.status === 'paid' || order.status === 'processing') && item.product_id && (
+                                <button
+                                  onClick={() => router.push(`/product/${item.product_id}`)}
+                                  className="text-xs text-primary-400 hover:text-primary-300 font-semibold underline"
+                                >
+                                  Write Review
+                                </button>
+                              )}
+                            </div>
                           </div>
                         ))}
                       </div>
@@ -176,6 +204,12 @@ export default function DashboardPage() {
           </div>
         </div>
       </main>
+
+      <InvoiceModal
+        order={selectedInvoiceOrder}
+        isOpen={Boolean(selectedInvoiceOrder)}
+        onClose={() => setSelectedInvoiceOrder(null)}
+      />
 
       <Footer />
     </div>
