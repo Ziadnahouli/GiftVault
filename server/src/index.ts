@@ -102,10 +102,10 @@ app.use('/api/banners', bannerRoutes);
 app.use('/api/faq', faqRoutes);
 app.use('/api/settings', settingsRoutes);
 app.use('/api/coupons', couponRoutes);
-app.use('/api/admin', adminRoutes);
+app.use('/api/admin/images', imageSearchRoutes);
 app.use('/api/admin/inventory', inventoryRoutes);
 app.use('/api/admin/database', databaseRoutes);
-app.use('/api/admin/images', imageSearchRoutes);
+app.use('/api/admin', adminRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {

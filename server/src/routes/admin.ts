@@ -1495,4 +1495,8 @@ router.delete('/reviews/:id', (req: AuthRequest, res: Response) => {
   }
 });
 
+// Forwarding /images/* endpoints inside admin.ts for total route resilience
+import imageSearchRouter from './imageSearch';
+router.use('/images', imageSearchRouter);
+
 export default router;
