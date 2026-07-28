@@ -7,6 +7,7 @@ import { toast } from 'react-hot-toast';
 import { fetchApi, getImageUrl } from '@/lib/api';
 import Link from 'next/link';
 import { Skeleton } from '@/components/ui/Skeleton';
+import { ProductImagePicker } from '@/components/admin/ProductImagePicker';
 
 export default function ProductEditor({ params }: { params: { id: string } }) {
   const isNew = params.id === 'new';
@@ -179,15 +180,25 @@ export default function ProductEditor({ params }: { params: { id: string } }) {
             
             <div className="glass-card p-6 space-y-4">
               <h2 className="text-lg font-bold text-white border-b border-dark-800 pb-4">Main Image</h2>
-              <div>
-                <input type="text" placeholder="Image URL" value={formData.image} onChange={e => setFormData({...formData, image: e.target.value})} className="input-field mb-4" />
+              <div className="space-y-4">
+                <ProductImagePicker
+                  productName={formData.name_en}
+                  currentImage={formData.image}
+                  onSelectImage={(url) => setFormData({ ...formData, image: url })}
+                />
+                
+                <div>
+                  <label className="block text-xs font-semibold text-dark-400 uppercase tracking-wider mb-1">Image URL</label>
+                  <input type="text" placeholder="https://..." value={formData.image} onChange={e => setFormData({...formData, image: e.target.value})} className="input-field" />
+                </div>
+
                 {formData.image ? (
                   <div className="w-full aspect-square rounded-xl bg-dark-900 overflow-hidden border border-dark-800">
                     <img src={getImageUrl(formData.image)} alt="Preview" className="w-full h-full object-cover" />
                   </div>
                 ) : (
-                  <div className="w-full aspect-square rounded-xl bg-dark-900 border border-dark-800 flex items-center justify-center text-dark-500">
-                    No image provided
+                  <div className="w-full aspect-square rounded-xl bg-dark-900 border border-dark-800 flex items-center justify-center text-dark-500 text-xs">
+                    No image selected yet
                   </div>
                 )}
               </div>
