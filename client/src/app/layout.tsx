@@ -3,6 +3,7 @@ import { Inter, Cairo } from "next/font/google";
 import "./globals.css";
 import { Providers } from "@/contexts/Providers";
 import { GoogleAnalytics } from "@/components/analytics/GoogleAnalytics";
+import { Analytics } from "@vercel/analytics/react";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -105,6 +106,7 @@ export default function RootLayout({
       <body className="bg-dark-950 text-dark-100 antialiased selection:bg-primary-500 selection:text-white">
         <Providers>
           {children}
+          <Analytics />
         </Providers>
       </body>
     </html>
