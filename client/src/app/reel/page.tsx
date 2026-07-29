@@ -218,14 +218,14 @@ export default function ReelPage() {
 
       {/* Primary Download Video & Controls Bar */}
       <div className="mt-6 flex flex-col sm:flex-row items-center gap-3">
-        <button
-          onClick={handleDownloadVideo}
-          disabled={isRecording}
-          className="btn-primary text-sm px-6 py-3 flex items-center gap-2 shadow-glow-md animate-pulse font-bold text-white bg-gradient-to-r from-primary-500 via-secondary-500 to-primary-600 hover:scale-105 transition-all"
+        <a
+          href="/reel-video.webm"
+          download="giftvault-instagram-reel-hd.webm"
+          className="btn-primary text-sm px-6 py-3 flex items-center gap-2 shadow-glow-md font-bold text-white bg-gradient-to-r from-primary-500 via-secondary-500 to-primary-600 hover:scale-105 transition-all text-center"
         >
           <Download className="w-5 h-5" />
-          {isRecording ? (recordingStatus || 'Exporting Video...') : 'Download Video (MP4 / WebM)'}
-        </button>
+          Download Video Reel (HD)
+        </a>
 
         <div className="flex items-center gap-2">
           <button
