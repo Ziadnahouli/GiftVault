@@ -5,7 +5,7 @@ import { useSearchParams, useRouter } from 'next/navigation';
 import { Filter, ChevronDown, Check } from 'lucide-react';
 import { fetchApi } from '@/lib/api';
 import { useLanguage } from '@/contexts/LanguageContext';
-import { ProductCard } from '@/components/store/ProductCard';
+import { ProductCard, ProductCardSkeleton } from '@/components/store/ProductCard';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { Navbar } from '@/components/layout/Navbar';
 import { Footer } from '@/components/layout/Footer';
@@ -164,7 +164,7 @@ function ShopContent() {
             <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6">
               {isLoading ? (
                 Array(8).fill(0).map((_, i) => (
-                  <Skeleton key={i} className="aspect-[3/4] w-full" />
+                  <ProductCardSkeleton key={i} />
                 ))
               ) : products.length > 0 ? (
                 products.map(product => (

@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { ArrowRight, Sparkles, ShieldCheck, Zap } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { fetchApi, getImageUrl } from '@/lib/api';
-import { ProductCard } from '@/components/store/ProductCard';
+import { ProductCard, ProductCardSkeleton } from '@/components/store/ProductCard';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { Navbar } from '@/components/layout/Navbar';
 import { Footer } from '@/components/layout/Footer';
@@ -126,7 +126,7 @@ export default function Home() {
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
               {isLoading ? (
                 Array(4).fill(0).map((_, i) => (
-                  <Skeleton key={i} className="aspect-[3/4] w-full" />
+                  <ProductCardSkeleton key={i} />
                 ))
               ) : featuredProducts.length > 0 ? (
                 featuredProducts.map(product => (
@@ -148,13 +148,17 @@ export default function Home() {
         </section>
 
         {/* Categories Grid */}
-        {categories.length > 0 && (
-          <section className="section bg-dark-900 border-y border-dark-800 relative overflow-hidden">
-            <div className="page-container">
-              <h2 className="section-title text-center mb-12">{t('home.categories')}</h2>
-              
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                {categories.map((cat: any) => {
+        <section className="section bg-dark-900 border-y border-dark-800 relative overflow-hidden">
+          <div className="page-container">
+            <h2 className="section-title text-center mb-12">{t('home.categories')}</h2>
+            
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              {isLoading ? (
+                Array(4).fill(0).map((_, i) => (
+                  <Skeleton key={i} className="aspect-square w-full rounded-2xl" />
+                ))
+              ) : categories.length > 0 ? (
+                categories.map((cat: any) => {
                   const catName = language === 'ar' ? cat.name_ar : cat.name_en;
                   return (
                     <Link href={`/shop?category=${cat.slug}`} key={cat.id} aria-label={`Explore ${catName} category`} className="group relative aspect-square overflow-hidden rounded-2xl border border-white/5">
@@ -172,11 +176,15 @@ export default function Home() {
                       </div>
                     </Link>
                   );
-                })}
-              </div>
+                })
+              ) : (
+                <div className="col-span-full py-8 text-center text-dark-300">
+                  No categories available.
+                </div>
+              )}
             </div>
-          </section>
-        )}
+          </div>
+        </section>
 
         {/* Best Sellers */}
         <section className="section">
@@ -194,7 +202,7 @@ export default function Home() {
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 md:gap-6">
               {isLoading ? (
                 Array(5).fill(0).map((_, i) => (
-                  <Skeleton key={i} className="aspect-[3/4] w-full" />
+                  <ProductCardSkeleton key={i} />
                 ))
               ) : bestSellers.length > 0 ? (
                 bestSellers.map(product => (

@@ -5,6 +5,7 @@ import { Star, ShoppingCart, Gift } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useCurrency } from '@/contexts/CurrencyContext';
 import { getImageUrl } from '@/lib/api';
+import { Skeleton } from '@/components/ui/Skeleton';
 
 interface ProductCardProps {
   product: {
@@ -93,5 +94,26 @@ export function ProductCard({ product }: ProductCardProps) {
         </div>
       </div>
     </Link>
+  );
+}
+
+export function ProductCardSkeleton() {
+  return (
+    <div className="glass-card h-full flex flex-col overflow-hidden relative">
+      <div className="relative aspect-[3/4] w-full bg-dark-900 overflow-hidden">
+        <Skeleton className="w-full h-full" />
+      </div>
+      <div className="p-5 flex flex-col flex-grow relative z-20 -mt-12 bg-gradient-to-t from-dark-800 via-dark-800 to-transparent pt-12">
+        <Skeleton className="h-6 w-3/4 mb-2" />
+        <Skeleton className="h-4 w-1/3 mb-4" />
+        <div className="mt-auto flex items-center justify-between">
+          <div className="flex flex-col gap-1">
+            <Skeleton className="h-3 w-16" />
+            <Skeleton className="h-6 w-20" />
+          </div>
+          <Skeleton className="w-10 h-10 rounded-full" />
+        </div>
+      </div>
+    </div>
   );
 }

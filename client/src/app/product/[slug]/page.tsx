@@ -95,7 +95,6 @@ export default function ProductPage() {
       currencyCode: selectedRegion.currency_code,
       faceValue: selectedValue.face_value,
       priceUsd: selectedValue.discount_price_usd || selectedValue.price_usd,
-      originalPriceUsd: selectedValue.discount_price_usd ? selectedValue.price_usd : null,
       quantity,
       giftCardValueId: selectedValue.id,
     });
