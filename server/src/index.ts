@@ -26,6 +26,7 @@ import adminRoutes from './routes/admin';
 import inventoryRoutes from './routes/inventory';
 import databaseRoutes from './routes/database';
 import imageSearchRoutes from './routes/imageSearch';
+import healthRoutes from './routes/health';
 import { maintenanceGuard } from './middleware/maintenance';
 
 const app = express();
@@ -108,9 +109,7 @@ app.use('/api/admin/database', databaseRoutes);
 app.use('/api/admin', adminRoutes);
 
 // Health check
-app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok', timestamp: new Date().toISOString() });
-});
+app.use('/api/health', healthRoutes);
 
 // 404 handler
 app.use((req, res) => {

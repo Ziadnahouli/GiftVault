@@ -7,6 +7,7 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import { useCurrency } from '@/contexts/CurrencyContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCart } from '@/contexts/CartContext';
+import { SearchModal } from '@/components/store/SearchModal';
 
 export function Navbar() {
   const { t, language, setLanguage } = useLanguage();
@@ -14,6 +15,7 @@ export function Navbar() {
   const { user, logout, isAuthenticated, isAdmin } = useAuth();
   const { itemCount, setIsCartOpen } = useCart();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
 
   return (
     <nav className="sticky top-0 z-50 w-full bg-dark-950/95 backdrop-blur-md border-b border-dark-800/80 shadow-xl">
@@ -33,15 +35,17 @@ export function Navbar() {
             <Link href="/" className="text-dark-300 hover:text-white transition-colors">{t('common.home')}</Link>
             <Link href="/shop" className="text-dark-300 hover:text-white transition-colors">{t('common.shop')}</Link>
             
-            {/* Search */}
-            <div className="relative group">
-              <Search className="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-dark-400 group-focus-within:text-primary-400 transition-colors" />
-              <input 
-                type="text" 
-                placeholder={t('common.search')}
-                className="pl-10 pr-4 py-2 w-64 bg-dark-900 border border-dark-700 rounded-full text-sm text-white focus:outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500/50 transition-all"
-              />
-            </div>
+            {/* Search Trigger */}
+            <button
+              onClick={() => setIsSearchOpen(true)}
+              className="relative flex items-center pl-10 pr-4 py-2 w-64 bg-dark-900 border border-dark-700 hover:border-dark-600 rounded-full text-sm text-dark-400 hover:text-white transition-all text-left group"
+            >
+              <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-dark-400 group-hover:text-primary-400 transition-colors" />
+              <span>{t('common.search')}...</span>
+              <kbd className="ml-auto text-[10px] font-semibold text-dark-400 bg-dark-800 px-1.5 py-0.5 rounded border border-dark-700">
+                ⌘K
+              </kbd>
+            </button>
           </div>
 
           {/* Right Actions */}
@@ -133,14 +137,13 @@ export function Navbar() {
       {isMobileMenuOpen && (
         <div className="md:hidden absolute top-20 left-0 right-0 w-full bg-dark-950 border-t border-b border-dark-800 shadow-2xl animate-fade-in-down max-w-full overflow-hidden">
           <div className="p-4 space-y-4 max-w-full">
-            <div className="relative">
+            <button 
+              onClick={() => { setIsMobileMenuOpen(false); setIsSearchOpen(true); }}
+              className="w-full relative flex items-center pl-10 pr-4 py-3 bg-dark-900 border border-dark-700 rounded-xl text-dark-400 text-sm font-medium hover:text-white transition-colors text-left"
+            >
               <Search className="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-dark-400" />
-              <input 
-                type="text" 
-                placeholder={t('common.search')}
-                className="w-full pl-10 pr-4 py-3 bg-dark-900 border border-dark-700 rounded-xl text-white focus:outline-none focus:border-primary-500 text-sm"
-              />
-            </div>
+              <span>{t('common.search')}...</span>
+            </button>
             <div className="flex flex-col space-y-2">
               <Link href="/" onClick={() => setIsMobileMenuOpen(false)} className="px-4 py-3 text-dark-300 hover:text-white hover:bg-dark-900 rounded-xl font-medium text-sm">{t('common.home')}</Link>
               <Link href="/shop" onClick={() => setIsMobileMenuOpen(false)} className="px-4 py-3 text-dark-300 hover:text-white hover:bg-dark-900 rounded-xl font-medium text-sm">{t('common.shop')}</Link>
@@ -157,6 +160,9 @@ export function Navbar() {
           </div>
         </div>
       )}
+
+      {/* Instant Search Overlay */}
+      <SearchModal isOpen={isSearchOpen} onClose={() => setIsSearchOpen(false)} />
     </nav>
   );
 }
